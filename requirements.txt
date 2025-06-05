@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+transformers
+torch
+pydantic
+scikit-learn  # for thresholding & multilabel processing
