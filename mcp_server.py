@@ -5,7 +5,6 @@ from pydantic import BaseModel
 from typing import Optional, List, Dict
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
-import torch.nn.functional as F
 import uuid
 
 app = FastAPI()
@@ -20,7 +19,7 @@ emotion_labels = [
     "admiration", "amusement", "anger", "annoyance", "approval", "caring", "confusion", "curiosity",
     "desire", "disappointment", "disapproval", "disgust", "embarrassment", "excitement", "fear", "gratitude",
     "grief", "joy", "love", "nervousness", "optimism", "pride", "realization", "relief", "remorse", "sadness",
-    "surprise"
+    "surprise", "neutral"
 ]
 
 # In-memory session store
@@ -46,7 +45,7 @@ async def detect_emotion(input: ToolInput) -> ToolOutput:
         logits = model(**inputs).logits
         probs = torch.sigmoid(logits)[0]  # Multi-label sigmoid activation
 
-    threshold = 0.35  # Adjust for sensitivity
+    threshold = 0.15  # Lower threshold for broader emotion detection
     detected = [(emotion_labels[i], float(probs[i])) for i in range(len(probs)) if probs[i] > threshold]
     detected_emotions = [label for label, _ in detected]
     confidence_scores = {label: round(score, 3) for label, score in detected}
@@ -58,7 +57,7 @@ async def detect_emotion(input: ToolInput) -> ToolOutput:
         "context": input.context or "general"
     })
 
-    # Simple recommendation
+    # Simple recommendation logic
     recommendation = None
     if "remorse" in detected_emotions:
         recommendation = "Try to be kind to yourself—consider reflecting without judgment."
