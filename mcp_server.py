@@ -7,6 +7,7 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from db import database
 import torch
 import uuid
+import json
 
 app = FastAPI()
 
@@ -23,8 +24,7 @@ emotion_labels = [
     "surprise", "neutral"
 ]
 
-# In-memory session store
-emotion_history: Dict[str, List[Dict]] = {}
+
 
 # Input and output schemas
 class ToolInput(BaseModel):
@@ -51,16 +51,29 @@ async def detect_emotion(input: ToolInput) -> ToolOutput:
     detected_emotions = [label for label, _ in detected]
     confidence_scores = {label: round(score, 3) for label, score in detected}
 
-    # Store history
-    emotion_history.setdefault(session_id, []).append({
-        "message": input.message,
-        "emotions": detected_emotions,
-        "context": input.context or "general"
-    })
+    try:
+        await database.execute(
+            query="""
+                INSERT INTO emotion_logs (session_id, message, emotions, context)
+                VALUES (:session_id, :message, :emotions, :context)
+            """,
+            values={
+                "session_id": session_id,
+                "message": input.message,
+                "emotions": json.dumps(detected_emotions),
+                "context": input.context or "general"
+            }
+        )
+    except Exception as e:
+        print(f"Database error: {e}")  # Optional: log the actual error
+        raise HTTPException(status_code=500, detail="Database insert failed")
+
 
     # Simple recommendation logic
     recommendation = None
-    if "remorse" in detected_emotions:
+    if not detected_emotions:
+        recommendation = "No strong emotions detected. Try expressing more detail."
+    elif "remorse" in detected_emotions:
         recommendation = "Try to be kind to yourself—consider reflecting without judgment."
     elif "gratitude" in detected_emotions:
         recommendation = "That's great! Maybe write down what you're thankful for."
@@ -74,14 +87,35 @@ async def detect_emotion(input: ToolInput) -> ToolOutput:
         recommendation=recommendation
     )
 
+
 @app.get("/tools/emotion-history/{session_id}")
 async def get_emotion_history(session_id: str):
-    return {"session_id": session_id, "history": emotion_history.get(session_id, [])}
+    query = """
+        SELECT message, emotions, context, timestamp
+        FROM emotion_logs
+        WHERE session_id = :session_id
+        ORDER BY timestamp
+    """
+    rows = await database.fetch_all(query=query, values={"session_id": session_id})
 
-@app.delete("/tools/emotion-history/{session_id}")
-async def reset_emotion_history(session_id: str):
-    emotion_history.pop(session_id, None)
-    return {"message": f"Session {session_id} history reset."}
+    history = []
+    for row in rows:
+        try:
+            emotions = json.loads(row["emotions"])
+        except json.JSONDecodeError:
+            emotions = []
+
+        history.append({
+            "message": row["message"],
+            "emotions": emotions,
+            "context": row["context"],
+            "timestamp": row["timestamp"]
+        })
+
+    return {
+        "session_id": session_id,
+        "history": history
+    }
 
 @app.on_event("startup")
 async def startup():
@@ -90,7 +124,7 @@ async def startup():
 @app.on_event("shutdown")
 async def shutdown():
     await database.disconnect()
-
+ 
 @app.get("/db-test")
 async def db_test():
     query = "SELECT 1 as test_value"
