@@ -4,3 +4,7 @@ transformers
 torch
 pydantic
 scikit-learn  # for thresholding & multilabel processing
+databases
+asyncpg
+python-dotenv
+alembic

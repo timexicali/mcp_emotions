@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import Optional, List, Dict
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from db import database
 import torch
 import uuid
 
@@ -81,3 +82,17 @@ async def get_emotion_history(session_id: str):
 async def reset_emotion_history(session_id: str):
     emotion_history.pop(session_id, None)
     return {"message": f"Session {session_id} history reset."}
+
+@app.on_event("startup")
+async def startup():
+    await database.connect()
+
+@app.on_event("shutdown")
+async def shutdown():
+    await database.disconnect()
+
+@app.get("/db-test")
+async def db_test():
+    query = "SELECT 1 as test_value"
+    result = await database.fetch_one(query=query)
+    return {"db_response": result["test_value"]}
