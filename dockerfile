@@ -14,6 +14,9 @@ WORKDIR /app
 COPY requirements.txt /app/
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
+# Create logs directory and set permissions
+RUN mkdir -p /app/logs && chmod 777 /app/logs
+
 # Copy source code
 COPY . /app
 
@@ -21,4 +24,4 @@ COPY . /app
 EXPOSE 8000
 
 # Start the FastAPI app using Uvicorn
-CMD ["uvicorn", "mcp_server:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "mcp_server:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

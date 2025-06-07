@@ -1,0 +1,2 @@
+2025-06-07 01:10:53,449 - jwt_validation - INFO - Login attempt for user: dummy@example.com
+2025-06-07 01:10:53,691 - jwt_validation - WARNING - Login failed for user: dummy@example.com
