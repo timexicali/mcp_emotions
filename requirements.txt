@@ -2,9 +2,11 @@ fastapi
 uvicorn
 transformers
 torch
-pydantic
+pydantic[email]  # Includes email-validator
 scikit-learn  # for thresholding & multilabel processing
 databases
 asyncpg
 python-dotenv
 alembic
+sqlalchemy[asyncio]
+psycopg2-binary  # Required for Alembic migrations

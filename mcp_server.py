@@ -1,15 +1,18 @@
 # mcp_server.py - Advanced MCP server using GoEmotions for multilabel emotion detection
 
+from routers import user as user_router
 from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import Optional, List, Dict
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
-from db import database
+from db.database import database
 import torch
 import uuid
 import json
 
 app = FastAPI()
+
+app.include_router(user_router.router, prefix="/users", tags=["users"])
 
 # Load tokenizer and model for GoEmotions
 MODEL_NAME = "bhadresh-savani/bert-base-go-emotion"
