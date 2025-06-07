@@ -10,3 +10,4 @@ python-dotenv
 alembic
 sqlalchemy[asyncio]
 psycopg2-binary  # Required for Alembic migrations
+passlib[bcrypt]

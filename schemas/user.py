@@ -9,6 +9,7 @@ from datetime import datetime
 class UserCreate(BaseModel):
     email: EmailStr
     name: Optional[str] = None
+    password: str
 
 
 class UserRead(BaseModel):
