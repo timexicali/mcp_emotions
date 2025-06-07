@@ -11,3 +11,5 @@ alembic
 sqlalchemy[asyncio]
 psycopg2-binary  # Required for Alembic migrations
 passlib[bcrypt]
+python-jose[cryptography]  # For JWT handling
+python-multipart  # For form data parsing

@@ -1,11 +1,12 @@
 # mcp_server.py - Advanced MCP server using GoEmotions for multilabel emotion detection
 
 from routers import user as user_router
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional, List, Dict
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from db.database import database
+from utils.jwt import get_current_user
 import torch
 import uuid
 import json
@@ -27,8 +28,6 @@ emotion_labels = [
     "surprise", "neutral"
 ]
 
-
-
 # Input and output schemas
 class ToolInput(BaseModel):
     message: str
@@ -42,7 +41,10 @@ class ToolOutput(BaseModel):
     recommendation: Optional[str] = None
 
 @app.post("/tools/emotion-detector")
-async def detect_emotion(input: ToolInput) -> ToolOutput:
+async def detect_emotion(
+    input: ToolInput,
+    current_user_id: str = Depends(get_current_user)
+) -> ToolOutput:
     session_id = input.session_id or str(uuid.uuid4())
     inputs = tokenizer(input.message, return_tensors="pt", truncation=True)
     with torch.no_grad():
@@ -71,7 +73,6 @@ async def detect_emotion(input: ToolInput) -> ToolOutput:
         print(f"Database error: {e}")  # Optional: log the actual error
         raise HTTPException(status_code=500, detail="Database insert failed")
 
-
     # Simple recommendation logic
     recommendation = None
     if not detected_emotions:
@@ -90,9 +91,11 @@ async def detect_emotion(input: ToolInput) -> ToolOutput:
         recommendation=recommendation
     )
 
-
 @app.get("/tools/emotion-history/{session_id}")
-async def get_emotion_history(session_id: str):
+async def get_emotion_history(
+    session_id: str,
+    current_user_id: str = Depends(get_current_user)
+):
     query = """
         SELECT message, emotions, context, timestamp
         FROM emotion_logs

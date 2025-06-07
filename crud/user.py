@@ -1,8 +1,7 @@
-
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from models.user import User
-from utils.security import hash_password
+from utils.security import hash_password, verify_password
 from schemas.user import UserCreate
 import uuid
 
@@ -10,6 +9,13 @@ async def get_user_by_email(db: AsyncSession, email: str):
     result = await db.execute(select(User).where(User.email == email))
     return result.scalars().first()
 
+async def authenticate_user(db: AsyncSession, email: str, password: str):
+    user = await get_user_by_email(db, email)
+    if not user:
+        return False
+    if not verify_password(password, user.hashed_password):
+        return False
+    return user
 
 async def create_user(db: AsyncSession, user_in: UserCreate) -> User:
     new_user = User(

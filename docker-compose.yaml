@@ -14,6 +14,7 @@ services:
       - db
     environment:
       DATABASE_URL: postgresql://mcpsuper:mysecurepass@db:5432/mcpdb
+      JWT_SECRET_KEY: "your-super-secret-key-change-in-production"  # Change this in production!
     command: uvicorn mcp_server:app --host 0.0.0.0 --port 8000 --reload
 
   db:
