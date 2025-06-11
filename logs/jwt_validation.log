@@ -1,2 +1,48 @@
 2025-06-07 01:10:53,449 - jwt_validation - INFO - Login attempt for user: dummy@example.com
 2025-06-07 01:10:53,691 - jwt_validation - WARNING - Login failed for user: dummy@example.com
+2025-06-11 23:01:48,973 - jwt_validation - INFO - Login attempt for user: dummy@example.com
+2025-06-11 23:01:49,200 - jwt_validation - INFO - Created JWT token for user f5b052cb-4ffa-4848-935e-3c2ecf009753
+2025-06-11 23:01:49,200 - jwt_validation - INFO - Login successful for user: dummy@example.com
+2025-06-11 23:01:57,497 - jwt_validation - INFO - Attempting to validate JWT token
+2025-06-11 23:01:57,497 - jwt_validation - INFO - Successfully validated JWT token for user f5b052cb-4ffa-4848-935e-3c2ecf009753
+2025-06-11 23:01:57,497 - jwt_validation - INFO - Fetching user profile for user ID: f5b052cb-4ffa-4848-935e-3c2ecf009753
+2025-06-11 23:01:57,499 - jwt_validation - WARNING - User not found for ID: f5b052cb-4ffa-4848-935e-3c2ecf009753
+2025-06-11 23:03:18,030 - jwt_validation - INFO - Login attempt for user: dummy@example.com
+2025-06-11 23:03:18,269 - jwt_validation - INFO - Created JWT token for user f5b052cb-4ffa-4848-935e-3c2ecf009753
+2025-06-11 23:03:18,269 - jwt_validation - INFO - Login successful for user: dummy@example.com
+2025-06-11 23:03:23,165 - jwt_validation - INFO - Attempting to validate JWT token
+2025-06-11 23:03:23,166 - jwt_validation - INFO - Successfully validated JWT token for user f5b052cb-4ffa-4848-935e-3c2ecf009753
+2025-06-11 23:03:23,166 - jwt_validation - INFO - Fetching user profile for user ID: f5b052cb-4ffa-4848-935e-3c2ecf009753
+2025-06-11 23:04:32,233 - jwt_validation - INFO - Login attempt for user: dummy@example.com
+2025-06-11 23:04:32,454 - jwt_validation - INFO - Created JWT token for user f5b052cb-4ffa-4848-935e-3c2ecf009753
+2025-06-11 23:04:32,455 - jwt_validation - INFO - Created JWT token for user f5b052cb-4ffa-4848-935e-3c2ecf009753
+2025-06-11 23:04:32,455 - jwt_validation - INFO - Login successful for user: dummy@example.com
+2025-06-11 23:04:37,610 - jwt_validation - INFO - Attempting to validate JWT token
+2025-06-11 23:04:37,611 - jwt_validation - INFO - Successfully validated JWT token for user f5b052cb-4ffa-4848-935e-3c2ecf009753
+2025-06-11 23:04:37,612 - jwt_validation - INFO - Fetching user profile for user ID: f5b052cb-4ffa-4848-935e-3c2ecf009753
+2025-06-11 23:05:38,499 - jwt_validation - INFO - Login attempt for user: dummy@example.com
+2025-06-11 23:05:38,744 - jwt_validation - INFO - Created JWT token for user f5b052cb-4ffa-4848-935e-3c2ecf009753
+2025-06-11 23:05:38,744 - jwt_validation - INFO - Created JWT token for user f5b052cb-4ffa-4848-935e-3c2ecf009753
+2025-06-11 23:05:38,744 - jwt_validation - INFO - Login successful for user: dummy@example.com
+2025-06-11 23:05:44,131 - jwt_validation - INFO - Attempting to validate JWT token
+2025-06-11 23:05:44,132 - jwt_validation - INFO - Successfully validated JWT token for user f5b052cb-4ffa-4848-935e-3c2ecf009753
+2025-06-11 23:05:44,132 - jwt_validation - INFO - Fetching user profile for user ID: f5b052cb-4ffa-4848-935e-3c2ecf009753
+2025-06-11 23:06:44,687 - jwt_validation - INFO - Login attempt for user: dummy@example.com
+2025-06-11 23:06:44,926 - jwt_validation - INFO - Created JWT token for user f5b052cb-4ffa-4848-935e-3c2ecf009753
+2025-06-11 23:06:44,926 - jwt_validation - INFO - Created JWT token for user f5b052cb-4ffa-4848-935e-3c2ecf009753
+2025-06-11 23:06:44,926 - jwt_validation - INFO - Login successful for user: dummy@example.com
+2025-06-11 23:06:50,365 - jwt_validation - INFO - Attempting to validate JWT token
+2025-06-11 23:06:50,366 - jwt_validation - INFO - Successfully validated JWT token for user f5b052cb-4ffa-4848-935e-3c2ecf009753
+2025-06-11 23:06:50,367 - jwt_validation - INFO - Fetching user profile for user ID: f5b052cb-4ffa-4848-935e-3c2ecf009753
+2025-06-11 23:07:42,929 - jwt_validation - INFO - Login attempt for user: dummy@example.com
+2025-06-11 23:07:43,143 - jwt_validation - INFO - Created JWT token for user f5b052cb-4ffa-4848-935e-3c2ecf009753
+2025-06-11 23:07:43,143 - jwt_validation - INFO - Created JWT token for user f5b052cb-4ffa-4848-935e-3c2ecf009753
+2025-06-11 23:07:43,144 - jwt_validation - INFO - Login successful for user: dummy@example.com
+2025-06-11 23:07:49,507 - jwt_validation - INFO - Attempting to validate JWT token
+2025-06-11 23:07:49,508 - jwt_validation - INFO - Successfully validated JWT token for user f5b052cb-4ffa-4848-935e-3c2ecf009753
+2025-06-11 23:07:49,508 - jwt_validation - INFO - Fetching user profile for user ID: f5b052cb-4ffa-4848-935e-3c2ecf009753
+2025-06-11 23:07:54,715 - jwt_validation - INFO - Created JWT token for user f5b052cb-4ffa-4848-935e-3c2ecf009753
+2025-06-11 23:07:54,715 - jwt_validation - INFO - Created JWT token for user f5b052cb-4ffa-4848-935e-3c2ecf009753
+2025-06-11 23:07:59,845 - jwt_validation - INFO - Attempting to validate JWT token
+2025-06-11 23:07:59,846 - jwt_validation - INFO - Successfully validated JWT token for user f5b052cb-4ffa-4848-935e-3c2ecf009753
+2025-06-11 23:07:59,846 - jwt_validation - INFO - Fetching user profile for user ID: f5b052cb-4ffa-4848-935e-3c2ecf009753

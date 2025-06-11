@@ -6,6 +6,7 @@ from fastapi.security import OAuth2PasswordBearer
 import os
 from dotenv import load_dotenv
 from .logger import jwt_logger
+from datetime import timedelta
 
 load_dotenv()
 
@@ -60,3 +61,19 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     except Exception as e:
         jwt_logger.error(f"Unexpected error during JWT validation: {str(e)}")
         raise credentials_exception 
+
+def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+
+    try:
+        to_encode = data.copy()
+        if expires_delta:
+            expire = datetime.utcnow() + expires_delta
+        else:
+            expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        to_encode.update({"exp": expire})
+        encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+        jwt_logger.info(f"Created refresh token for user {data.get('sub')}")
+        return encoded_jwt
+    except Exception as e:
+        jwt_logger.error(f"Error creating refresh token: {str(e)}")
+        raise

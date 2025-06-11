@@ -6,20 +6,25 @@ from uuid import UUID
 from datetime import datetime
 
 
-class UserCreate(BaseModel):
+class UserBase(BaseModel):
     email: EmailStr
-    name: Optional[str] = None
+    name: str
+
+
+class UserCreate(UserBase):
     password: str
 
 
-class UserRead(BaseModel):
+class UserRead(UserBase):
     id: UUID
-    email: EmailStr
-    name: Optional[str] = None
     created_at: datetime
     is_active: bool
 
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True
+        json_encoders = {
+            UUID: str
+        }
 
 
 class TokenRead(BaseModel):
@@ -40,4 +45,5 @@ class UserLogin(BaseModel):
 
 class Token(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str
