@@ -19,6 +19,15 @@ def load_sarcasm_model(lang="en"):
         print(f"Loading sarcasm model for: {lang}")
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         model = AutoModelForSequenceClassification.from_pretrained(model_name)
+        model.eval()  # Set model to evaluation mode
+        if torch.cuda.is_available():
+            model = model.cuda()
+        # Warm up the model with a dummy input
+        dummy_input = tokenizer("test", return_tensors="pt", truncation=True, padding=True)
+        if torch.cuda.is_available():
+            dummy_input = {k: v.cuda() for k, v in dummy_input.items()}
+        with torch.no_grad():
+            model(**dummy_input)
         tokenizers_sarcasm[lang] = tokenizer
         models_sarcasm[lang] = model
 

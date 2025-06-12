@@ -59,6 +59,14 @@ def load_model(lang: str = "en"):
         tokenizers[lang] = AutoTokenizer.from_pretrained(MODEL_MAP[lang])
         models[lang] = AutoModelForSequenceClassification.from_pretrained(MODEL_MAP[lang])
         models[lang].eval()  # Set model to evaluation mode
+        if torch.cuda.is_available():
+            models[lang] = models[lang].cuda()
+        # Warm up the model with a dummy input
+        dummy_input = tokenizers[lang]("test", return_tensors="pt", truncation=True, max_length=512)
+        if torch.cuda.is_available():
+            dummy_input = {k: v.cuda() for k, v in dummy_input.items()}
+        with torch.no_grad():
+            models[lang](**dummy_input)
 
     return tokenizers[lang], models[lang]
 
@@ -199,18 +207,27 @@ async def startup():
     """Preload models at startup to avoid first-request latency."""
     try:
         print("\n=== Starting Model Preloading ===")
+        
         # Preload emotion detection models
         print("\nLoading emotion detection models...")
         for lang in ["en", "es"]:
             print(f"Loading {lang} emotion model...")
-            load_model(lang)
+            tokenizer, model = load_model(lang)
+            # Move model to evaluation mode and set to CPU/GPU
+            model.eval()
+            if torch.cuda.is_available():
+                model = model.cuda()
             print(f"✓ {lang} emotion model loaded")
         
         # Preload sarcasm detection models
         print("\nLoading sarcasm detection models...")
         for lang in ["en", "es"]:
             print(f"Loading {lang} sarcasm model...")
-            load_sarcasm_model(lang)
+            tokenizer, model = load_sarcasm_model(lang)
+            # Move model to evaluation mode and set to CPU/GPU
+            model.eval()
+            if torch.cuda.is_available():
+                model = model.cuda()
             print(f"✓ {lang} sarcasm model loaded")
         
         print("\n=== All Models Loaded Successfully! ===\n")
