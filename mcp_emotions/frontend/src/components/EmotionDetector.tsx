@@ -1,6 +1,22 @@
 import { useState } from 'react';
 import axios from 'axios';
 
+type EmotionType = 
+  'admiration' | 'amusement' | 'anger' | 'annoyance' | 'approval' | 'caring' | 'confusion' | 
+  'curiosity' | 'desire' | 'disappointment' | 'disapproval' | 'disgust' | 'embarrassment' | 
+  'excitement' | 'fear' | 'gratitude' | 'grief' | 'joy' | 'love' | 'nervousness' | 'optimism' | 
+  'pride' | 'realization' | 'relief' | 'remorse' | 'sadness' | 'surprise' | 'neutral';
+
+const EMOTICONS: Record<EmotionType, string> = {
+  'admiration': '👏', 'amusement': '😄', 'anger': '😠', 'annoyance': '😒',
+  'approval': '👍', 'caring': '🤗', 'confusion': '😕', 'curiosity': '🤔',
+  'desire': '😍', 'disappointment': '😞', 'disapproval': '👎', 'disgust': '🤮',
+  'embarrassment': '😳', 'excitement': '🤩', 'fear': '😨', 'gratitude': '🙏',
+  'grief': '😭', 'joy': '😃', 'love': '❤️', 'nervousness': '😬', 'optimism': '🌞',
+  'pride': '🏅', 'realization': '💡', 'relief': '😌', 'remorse': '😔',
+  'sadness': '😢', 'surprise': '😲', 'neutral': '😐'
+};
+
 export default function EmotionDetector() {
   const [text, setText] = useState('');
   const [result, setResult] = useState<any>(null);
@@ -17,6 +33,7 @@ export default function EmotionDetector() {
       const token = localStorage.getItem('token');
       if (!token) {
         setError('Please login first');
+        setLoading(false);
         return;
       }
 
@@ -78,6 +95,11 @@ export default function EmotionDetector() {
           {result && (
             <div className="mt-4">
               <h4 className="text-lg font-medium text-gray-900">Results:</h4>
+              {result.session_id && (
+                <div className="mt-2 text-sm text-gray-500">
+                  Session ID: <span className="font-mono">{result.session_id}</span>
+                </div>
+              )}
               <div className="mt-2 bg-gray-50 rounded-md p-4">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead>
@@ -90,8 +112,23 @@ export default function EmotionDetector() {
                     {Array.isArray(result.detected_emotions) && result.detected_emotions.length > 0 ? (
                       result.detected_emotions.map((emotion: string) => (
                         <tr key={emotion}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{emotion}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{result.confidence_scores && result.confidence_scores[emotion] !== undefined ? result.confidence_scores[emotion] : '-'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <span className="mr-2 inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-300 shadow-sm">{EMOTICONS[emotion as EmotionType] || '❓'}</span>
+                            {emotion}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {result.confidence_scores && result.confidence_scores[emotion] !== undefined ? 
+                              <div className="flex items-center">
+                                <span className="mr-2">{result.confidence_scores[emotion]}</span>
+                                <div className="w-24 bg-gray-200 rounded-full h-2.5">
+                                  <div 
+                                    className="bg-blue-600 h-2.5 rounded-full" 
+                                    style={{width: `${Math.round(result.confidence_scores[emotion] * 100)}%`}}
+                                  ></div>
+                                </div>
+                              </div> : '-'
+                            }
+                          </td>
                         </tr>
                       ))
                     ) : (
@@ -102,7 +139,9 @@ export default function EmotionDetector() {
                   </tbody>
                 </table>
                 <div className="mt-4">
-                  <span className="font-medium">Sarcasm:</span> {result.sarcasm_detected ? 'Yes' : 'No'}
+                  <span className="font-medium">Sarcasm:</span> {result.sarcasm_detected ? 
+                    <span className="ml-2 inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-300 shadow-sm">🔍</span> : 
+                    <span className="ml-2 inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-300 shadow-sm">👌</span>}
                 </div>
                 {result.recommendation && (
                   <div className="mt-2 p-2 bg-blue-50 rounded">

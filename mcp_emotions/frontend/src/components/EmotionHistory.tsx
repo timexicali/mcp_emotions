@@ -15,7 +15,7 @@ export default function EmotionHistory() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const fetchHistory = async () => {
+    const fetchHistory = async () => {
     if (!sessionId) {
       setError('Please enter a session ID');
       return;
@@ -23,25 +23,25 @@ export default function EmotionHistory() {
     setLoading(true);
     setError('');
     setLogs([]);
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setError('Please login first');
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          setError('Please login first');
         setLoading(false);
-        return;
-      }
-      const response = await axios.get(`http://localhost:8000/tools/emotion-history/${sessionId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`
+          return;
         }
-      });
+      const response = await axios.get(`http://localhost:8000/tools/emotion-history/${sessionId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
       setLogs(response.data.history || []);
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to fetch history');
-    } finally {
-      setLoading(false);
-    }
-  };
+      } catch (err: any) {
+        setError(err.response?.data?.detail || 'Failed to fetch history');
+      } finally {
+        setLoading(false);
+      }
+    };
 
   return (
     <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
