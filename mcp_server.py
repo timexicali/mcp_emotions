@@ -18,6 +18,7 @@ import json
 from typing import Optional, List, Dict
 from pydantic import BaseModel
 from utils.preprocessing import preprocess_input
+from utils.sarcasm import detect_sarcasm
 
 settings = get_settings()
 
@@ -84,6 +85,7 @@ class ToolOutput(BaseModel):
     session_id: str
     detected_emotions: List[str]
     confidence_scores: Dict[str, float]
+    sarcasm_detected: bool
     recommendation: Optional[str] = None
 
 @app.post("/tools/emotion-detector")
@@ -104,6 +106,9 @@ async def detect_emotion(
             language = detect(cleaned_text)
         except Exception:
             language = "en"  # default fallback if detection fails
+
+        # Detect sarcasm
+        is_sarcastic = detect_sarcasm(cleaned_text, lang=language)
 
         # Load model/tokenizer based on language
         tokenizer, model = load_model(lang=language if language in ["en", "es"] else "en")
@@ -129,7 +134,8 @@ async def detect_emotion(
                 message=input.message,
                 emotions=json.dumps(detected_emotions),
                 context=input.context or "general",
-                user_id=current_user.id
+                user_id=current_user.id,
+                sarcasm_detected=is_sarcastic
             )
             db.add(emotion_log)
             await db.commit()
@@ -153,6 +159,7 @@ async def detect_emotion(
             session_id=session_id,
             detected_emotions=detected_emotions,
             confidence_scores=confidence_scores,
+            sarcasm_detected=is_sarcastic,
             recommendation=recommendation
         )
     except Exception as e:
@@ -187,6 +194,7 @@ async def get_emotion_history(
             "message": log.message,
             "emotions": emotions,
             "context": log.context,
+            "sarcasm_detected": log.sarcasm_detected,
             "timestamp": log.created_at
         })
 

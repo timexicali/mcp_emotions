@@ -221,3 +221,8 @@
 2025-06-12 03:21:18,534 - jwt_validation - INFO - Token validation successful for user: testuser3@example.com
 2025-06-12 03:22:01,265 - jwt_validation - INFO - Validating JWT token
 2025-06-12 03:22:01,267 - jwt_validation - INFO - Token validation successful for user: testuser3@example.com
+2025-06-12 03:39:36,079 - jwt_validation - INFO - User logged in successfully: testuser3@example.com
+2025-06-12 03:39:36,079 - jwt_validation - INFO - Creating access token for user: testuser3@example.com
+2025-06-12 03:39:36,080 - jwt_validation - INFO - Creating refresh token for user: testuser3@example.com
+2025-06-12 03:39:59,397 - jwt_validation - INFO - Validating JWT token
+2025-06-12 03:39:59,402 - jwt_validation - INFO - Token validation successful for user: testuser3@example.com
