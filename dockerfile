@@ -26,4 +26,4 @@ COPY . .
 EXPOSE 8000
 
 # Start the FastAPI app using Uvicorn
-CMD ["uvicorn", "mcp_server:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uvicorn", "mcp_server:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -18,7 +18,8 @@ import json
 from typing import Optional, List, Dict
 from pydantic import BaseModel
 from utils.preprocessing import preprocess_input
-from utils.sarcasm import detect_sarcasm
+from utils.sarcasm import detect_sarcasm, load_sarcasm_model
+from services.recommender import generate_recommendation
 
 settings = get_settings()
 
@@ -47,12 +48,6 @@ MODEL_MAP = {
 # Cached models and tokenizers
 tokenizers = {}
 models = {}
-
-
-# Load tokenizer and model for GoEmotions
-MODEL_NAME = "bhadresh-savani/bert-base-go-emotion"
-tokenizer = None
-model = None
 
 def load_model(lang: str = "en"):
     lang = lang.lower()
@@ -144,16 +139,8 @@ async def detect_emotion(
             # Continue even if database operation fails
             pass
 
-        # Simple recommendation logic
-        recommendation = None
-        if not detected_emotions:
-            recommendation = "No strong emotions detected. Try expressing more detail."
-        elif "remorse" in detected_emotions:
-            recommendation = "Try to be kind to yourself—consider reflecting without judgment."
-        elif "gratitude" in detected_emotions:
-            recommendation = "That's great! Maybe write down what you're thankful for."
-        elif "anger" in detected_emotions:
-            recommendation = "Pause, breathe, and consider what boundary may feel crossed."
+        # Generate recommendation
+        recommendation = generate_recommendation(detected_emotions, is_sarcastic)
 
         return ToolOutput(
             session_id=session_id,
@@ -209,4 +196,24 @@ async def root():
 
 @app.on_event("startup")
 async def startup():
-    pass
+    """Preload models at startup to avoid first-request latency."""
+    try:
+        print("\n=== Starting Model Preloading ===")
+        # Preload emotion detection models
+        print("\nLoading emotion detection models...")
+        for lang in ["en", "es"]:
+            print(f"Loading {lang} emotion model...")
+            load_model(lang)
+            print(f"✓ {lang} emotion model loaded")
+        
+        # Preload sarcasm detection models
+        print("\nLoading sarcasm detection models...")
+        for lang in ["en", "es"]:
+            print(f"Loading {lang} sarcasm model...")
+            load_sarcasm_model(lang)
+            print(f"✓ {lang} sarcasm model loaded")
+        
+        print("\n=== All Models Loaded Successfully! ===\n")
+    except Exception as e:
+        print(f"\n❌ Error during model preloading: {str(e)}")
+        raise e  # Re-raise the exception to prevent the app from starting with unloaded models
