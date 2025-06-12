@@ -1,6 +1,7 @@
 # mcp_server.py - Advanced MCP server using GoEmotions for multilabel emotion detection
 
 from fastapi import FastAPI, Depends, HTTPException
+from langdetect import detect
 from fastapi.middleware.cors import CORSMiddleware
 from core.config import get_settings
 from routers import user
@@ -38,17 +39,32 @@ app.add_middleware(
 # Include routers
 app.include_router(user.router, prefix=settings.API_V1_STR)
 
+MODEL_MAP = {
+    "en": "bhadresh-savani/bert-base-go-emotion",
+    "es": "finiteautomata/bertweet-base-emotion-analysis"
+}
+# Cached models and tokenizers
+tokenizers = {}
+models = {}
+
+
 # Load tokenizer and model for GoEmotions
 MODEL_NAME = "bhadresh-savani/bert-base-go-emotion"
 tokenizer = None
 model = None
 
-def load_model():
-    global tokenizer, model
-    if tokenizer is None or model is None:
-        tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-        model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
-        model.eval()  # Set model to evaluation mode
+def load_model(lang: str = "en"):
+    lang = lang.lower()
+    if lang not in MODEL_MAP:
+        lang = "en"  # Fallback to English if unsupported
+
+    if lang not in models:
+        print(f"Loading model for language: {lang}")
+        tokenizers[lang] = AutoTokenizer.from_pretrained(MODEL_MAP[lang])
+        models[lang] = AutoModelForSequenceClassification.from_pretrained(MODEL_MAP[lang])
+        models[lang].eval()  # Set model to evaluation mode
+
+    return tokenizers[lang], models[lang]
 
 # Emotion labels from GoEmotions dataset
 emotion_labels = [
@@ -77,15 +93,22 @@ async def detect_emotion(
     db: AsyncSession = Depends(get_db)
 ) -> ToolOutput:
     try:
-        # Ensure model is loaded
-        load_model()
-        
         # Preprocess input
         try:
             cleaned_text = preprocess_input(input.message)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
             
+        # Detect language
+        try:
+            language = detect(cleaned_text)
+        except Exception:
+            language = "en"  # default fallback if detection fails
+
+        # Load model/tokenizer based on language
+        tokenizer, model = load_model(lang=language if language in ["en", "es"] else "en")
+
+        # Generate session ID
         session_id = input.session_id or str(uuid.uuid4())
         
         # Tokenize and get predictions
