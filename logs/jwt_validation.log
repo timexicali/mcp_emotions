@@ -158,3 +158,33 @@
 2025-06-12 01:02:17,812 - jwt_validation - INFO - Token validation successful for user: testuser2@example.com
 2025-06-12 01:02:25,752 - jwt_validation - INFO - Validating JWT token
 2025-06-12 01:02:25,754 - jwt_validation - INFO - Token validation successful for user: testuser2@example.com
+2025-06-12 01:21:23,082 - jwt_validation - INFO - Creating new user: testuser3@example.com
+2025-06-12 01:21:28,297 - jwt_validation - INFO - User logged in successfully: testuser3@example.com
+2025-06-12 01:21:28,297 - jwt_validation - INFO - Creating access token for user: testuser3@example.com
+2025-06-12 01:21:28,300 - jwt_validation - INFO - Creating refresh token for user: testuser3@example.com
+2025-06-12 01:21:35,284 - jwt_validation - INFO - Validating JWT token
+2025-06-12 01:21:35,287 - jwt_validation - INFO - Token validation successful for user: testuser3@example.com
+2025-06-12 01:21:50,069 - jwt_validation - INFO - Validating JWT token
+2025-06-12 01:21:50,073 - jwt_validation - INFO - Token validation successful for user: testuser3@example.com
+2025-06-12 01:52:50,108 - jwt_validation - WARNING - Registration failed: Email already registered: testuser@example.com
+2025-06-12 01:53:04,853 - jwt_validation - WARNING - Login failed for user: testuser@example.com
+2025-06-12 01:54:39,807 - jwt_validation - INFO - User logged in successfully: testuser3@example.com
+2025-06-12 01:54:39,807 - jwt_validation - INFO - Creating access token for user: testuser3@example.com
+2025-06-12 01:54:39,808 - jwt_validation - INFO - Creating refresh token for user: testuser3@example.com
+2025-06-12 01:55:02,004 - jwt_validation - INFO - Validating JWT token
+2025-06-12 01:55:02,005 - jwt_validation - ERROR - Token validation failed: Not enough segments
+2025-06-12 01:55:04,466 - jwt_validation - INFO - Validating JWT token
+2025-06-12 01:55:04,467 - jwt_validation - ERROR - Token validation failed: Not enough segments
+2025-06-12 01:55:17,393 - jwt_validation - INFO - Validating JWT token
+2025-06-12 01:55:17,396 - jwt_validation - INFO - Token validation successful for user: testuser3@example.com
+2025-06-12 01:55:17,397 - jwt_validation - INFO - User profile accessed: testuser3@example.com
+2025-06-12 01:55:32,191 - jwt_validation - INFO - Validating JWT token
+2025-06-12 01:55:32,198 - jwt_validation - INFO - Token validation successful for user: testuser3@example.com
+2025-06-12 01:55:39,655 - jwt_validation - INFO - Validating JWT token
+2025-06-12 01:55:39,657 - jwt_validation - INFO - Token validation successful for user: testuser3@example.com
+2025-06-12 01:56:29,457 - jwt_validation - INFO - Validating JWT token
+2025-06-12 01:56:29,462 - jwt_validation - INFO - Token validation successful for user: testuser3@example.com
+2025-06-12 01:57:16,824 - jwt_validation - INFO - Validating JWT token
+2025-06-12 01:57:16,828 - jwt_validation - INFO - Token validation successful for user: testuser3@example.com
+2025-06-12 01:57:32,627 - jwt_validation - INFO - Validating JWT token
+2025-06-12 01:57:32,629 - jwt_validation - INFO - Token validation successful for user: testuser3@example.com

@@ -1,0 +1,177 @@
+{
+	"info": {
+		"_postman_id": "mcp-server-collection",
+		"name": "MCP Server",
+		"description": "Collection for MCP Server API endpoints",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Root",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8000/",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": [""]
+				}
+			}
+		},
+		{
+			"name": "User Registration",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"email\": \"testuser@example.com\",\n    \"password\": \"testpass123\",\n    \"name\": \"Test User\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/v1/users/register",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": ["api", "v1", "users", "register"]
+				}
+			}
+		},
+		{
+			"name": "User Login",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/x-www-form-urlencoded"
+					}
+				],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "username",
+							"value": "testuser@example.com"
+						},
+						{
+							"key": "password",
+							"value": "testpass123"
+						}
+					]
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/v1/users/login",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": ["api", "v1", "users", "login"]
+				}
+			}
+		},
+		{
+			"name": "Get User Profile",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}"
+					}
+				],
+				"url": {
+					"raw": "http://localhost:8000/api/v1/users/me",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": ["api", "v1", "users", "me"]
+				}
+			}
+		},
+		{
+			"name": "Refresh Token",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{refresh_token}}"
+					}
+				],
+				"url": {
+					"raw": "http://localhost:8000/api/v1/users/refresh-token",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": ["api", "v1", "users", "refresh-token"]
+				}
+			}
+		},
+		{
+			"name": "Emotion Detector",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"message\": \"I am so happy and grateful today!\",\n    \"context\": \"daily journal\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8000/tools/emotion-detector",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": ["tools", "emotion-detector"]
+				}
+			}
+		},
+		{
+			"name": "Get Emotion History",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}"
+					}
+				],
+				"url": {
+					"raw": "http://localhost:8000/tools/emotion-history/{{session_id}}",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": ["tools", "emotion-history", "{{session_id}}"]
+				}
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "access_token",
+			"value": "your_access_token_here"
+		},
+		{
+			"key": "refresh_token",
+			"value": "your_refresh_token_here"
+		},
+		{
+			"key": "session_id",
+			"value": "your_session_id_here"
+		}
+	]
+} 

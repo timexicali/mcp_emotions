@@ -16,6 +16,7 @@ import uuid
 import json
 from typing import Optional, List, Dict
 from pydantic import BaseModel
+from utils.preprocessing import preprocess_input
 
 settings = get_settings()
 
@@ -79,10 +80,16 @@ async def detect_emotion(
         # Ensure model is loaded
         load_model()
         
+        # Preprocess input
+        try:
+            cleaned_text = preprocess_input(input.message)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+            
         session_id = input.session_id or str(uuid.uuid4())
         
         # Tokenize and get predictions
-        inputs = tokenizer(input.message, return_tensors="pt", truncation=True, max_length=512)
+        inputs = tokenizer(cleaned_text, return_tensors="pt", truncation=True, max_length=512)
         with torch.no_grad():
             logits = model(**inputs).logits
             probs = torch.sigmoid(logits)[0]  # Multi-label sigmoid activation
