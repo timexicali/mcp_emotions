@@ -6,7 +6,9 @@ from fastapi.security import OAuth2PasswordBearer
 import os
 from dotenv import load_dotenv
 from .logger import jwt_logger
-from datetime import timedelta
+from db.database import get_db
+from crud.user import get_user_by_id
+from schemas.user import UserRead
 
 load_dotenv()
 
@@ -36,7 +38,10 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
         jwt_logger.error(f"Error creating JWT token: {str(e)}")
         raise
 
-async def get_current_user(token: str = Depends(oauth2_scheme)):
+async def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db = Depends(get_db)
+) -> UserRead:
     """
     Validate JWT token and return user data
     """
@@ -53,14 +58,20 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         if user_id is None:
             jwt_logger.warning("JWT token validation failed: no user_id in payload")
             raise credentials_exception
+        
+        user = await get_user_by_id(db, user_id)
+        if user is None:
+            jwt_logger.warning(f"User not found for ID: {user_id}")
+            raise credentials_exception
+            
         jwt_logger.info(f"Successfully validated JWT token for user {user_id}")
-        return user_id
+        return user
     except JWTError as e:
         jwt_logger.error(f"JWT validation error: {str(e)}")
         raise credentials_exception
     except Exception as e:
         jwt_logger.error(f"Unexpected error during JWT validation: {str(e)}")
-        raise credentials_exception 
+        raise credentials_exception
 
 def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
 

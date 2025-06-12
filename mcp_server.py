@@ -1,24 +1,53 @@
 # mcp_server.py - Advanced MCP server using GoEmotions for multilabel emotion detection
 
-from routers import user as user_router
-from fastapi import FastAPI, HTTPException, Depends
-from pydantic import BaseModel
-from typing import Optional, List, Dict
+from fastapi import FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from core.config import get_settings
+from routers import user
+from db.session import engine, Base, get_db
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
-from db.database import database
-from utils.jwt import get_current_user
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from models.user import User
+from models.emotion_log import EmotionLog
+from auth.jwt import get_current_user
 import torch
 import uuid
 import json
+from typing import Optional, List, Dict
+from pydantic import BaseModel
 
-app = FastAPI()
+settings = get_settings()
 
-app.include_router(user_router.router, prefix="/users", tags=["users"])
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    version=settings.VERSION,
+    openapi_url=f"{settings.API_V1_STR}/openapi.json"
+)
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include routers
+app.include_router(user.router, prefix=settings.API_V1_STR)
 
 # Load tokenizer and model for GoEmotions
 MODEL_NAME = "bhadresh-savani/bert-base-go-emotion"
-tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
+tokenizer = None
+model = None
+
+def load_model():
+    global tokenizer, model
+    if tokenizer is None or model is None:
+        tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+        model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
+        model.eval()  # Set model to evaluation mode
 
 # Emotion labels from GoEmotions dataset
 emotion_labels = [
@@ -43,79 +72,92 @@ class ToolOutput(BaseModel):
 @app.post("/tools/emotion-detector")
 async def detect_emotion(
     input: ToolInput,
-    current_user_id: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
 ) -> ToolOutput:
-    session_id = input.session_id or str(uuid.uuid4())
-    inputs = tokenizer(input.message, return_tensors="pt", truncation=True)
-    with torch.no_grad():
-        logits = model(**inputs).logits
-        probs = torch.sigmoid(logits)[0]  # Multi-label sigmoid activation
-
-    threshold = 0.15  # Lower threshold for broader emotion detection
-    detected = [(emotion_labels[i], float(probs[i])) for i in range(len(probs)) if probs[i] > threshold]
-    detected_emotions = [label for label, _ in detected]
-    confidence_scores = {label: round(score, 3) for label, score in detected}
-
     try:
-        await database.execute(
-            query="""
-                INSERT INTO emotion_logs (session_id, message, emotions, context)
-                VALUES (:session_id, :message, :emotions, :context)
-            """,
-            values={
-                "session_id": session_id,
-                "message": input.message,
-                "emotions": json.dumps(detected_emotions),
-                "context": input.context or "general"
-            }
+        # Ensure model is loaded
+        load_model()
+        
+        session_id = input.session_id or str(uuid.uuid4())
+        
+        # Tokenize and get predictions
+        inputs = tokenizer(input.message, return_tensors="pt", truncation=True, max_length=512)
+        with torch.no_grad():
+            logits = model(**inputs).logits
+            probs = torch.sigmoid(logits)[0]  # Multi-label sigmoid activation
+
+        threshold = 0.15  # Lower threshold for broader emotion detection
+        detected = [(emotion_labels[i], float(probs[i])) for i in range(len(probs)) if probs[i] > threshold]
+        detected_emotions = [label for label, _ in detected]
+        confidence_scores = {label: round(score, 3) for label, score in detected}
+
+        try:
+            # Create emotion log entry
+            emotion_log = EmotionLog(
+                session_id=session_id,
+                message=input.message,
+                emotions=json.dumps(detected_emotions),
+                context=input.context or "general",
+                user_id=current_user.id
+            )
+            db.add(emotion_log)
+            await db.commit()
+        except Exception as e:
+            print(f"Database error: {e}")
+            # Continue even if database operation fails
+            pass
+
+        # Simple recommendation logic
+        recommendation = None
+        if not detected_emotions:
+            recommendation = "No strong emotions detected. Try expressing more detail."
+        elif "remorse" in detected_emotions:
+            recommendation = "Try to be kind to yourself—consider reflecting without judgment."
+        elif "gratitude" in detected_emotions:
+            recommendation = "That's great! Maybe write down what you're thankful for."
+        elif "anger" in detected_emotions:
+            recommendation = "Pause, breathe, and consider what boundary may feel crossed."
+
+        return ToolOutput(
+            session_id=session_id,
+            detected_emotions=detected_emotions,
+            confidence_scores=confidence_scores,
+            recommendation=recommendation
         )
     except Exception as e:
-        print(f"Database error: {e}")  # Optional: log the actual error
-        raise HTTPException(status_code=500, detail="Database insert failed")
-
-    # Simple recommendation logic
-    recommendation = None
-    if not detected_emotions:
-        recommendation = "No strong emotions detected. Try expressing more detail."
-    elif "remorse" in detected_emotions:
-        recommendation = "Try to be kind to yourself—consider reflecting without judgment."
-    elif "gratitude" in detected_emotions:
-        recommendation = "That's great! Maybe write down what you're thankful for."
-    elif "anger" in detected_emotions:
-        recommendation = "Pause, breathe, and consider what boundary may feel crossed."
-
-    return ToolOutput(
-        session_id=session_id,
-        detected_emotions=detected_emotions,
-        confidence_scores=confidence_scores,
-        recommendation=recommendation
-    )
+        print(f"Error in emotion detection: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Error processing emotion detection request"
+        )
 
 @app.get("/tools/emotion-history/{session_id}")
 async def get_emotion_history(
     session_id: str,
-    current_user_id: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
 ):
-    query = """
-        SELECT message, emotions, context, timestamp
-        FROM emotion_logs
-        WHERE session_id = :session_id
-        ORDER BY timestamp
-    """
-    rows = await database.fetch_all(query=query, values={"session_id": session_id})
+    # Query emotion logs for the session
+    result = await db.execute(
+        select(EmotionLog)
+        .where(EmotionLog.session_id == session_id)
+        .order_by(EmotionLog.created_at)
+    )
+    logs = result.scalars().all()
 
     history = []
-    for row in rows:
+    for log in logs:
         try:
-            emotions = json.loads(row["emotions"])
+            emotions = json.loads(log.emotions)
         except json.JSONDecodeError:
             emotions = []
 
         history.append({
-            "message": row["message"],
+            "message": log.message,
             "emotions": emotions,
-            "context": row["context"],
-            "timestamp": row["timestamp"]
+            "context": log.context,
+            "timestamp": log.created_at
         })
 
     return {
@@ -123,16 +165,10 @@ async def get_emotion_history(
         "history": history
     }
 
+@app.get("/")
+async def root():
+    return {"message": "Welcome to MCP Server"}
+
 @app.on_event("startup")
 async def startup():
-    await database.connect()
-
-@app.on_event("shutdown")
-async def shutdown():
-    await database.disconnect()
- 
-@app.get("/db-test")
-async def db_test():
-    query = "SELECT 1 as test_value"
-    result = await database.fetch_one(query=query)
-    return {"db_response": result["test_value"]}
+    pass

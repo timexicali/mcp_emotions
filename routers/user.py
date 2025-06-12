@@ -1,35 +1,43 @@
+from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
-from db.database import get_db
-from schemas.user import UserCreate, UserRead, UserLogin, Token
-from crud.user import create_user, get_user_by_email, authenticate_user, get_user_by_id
-from utils.jwt import create_access_token, get_current_user, oauth2_scheme, SECRET_KEY, ALGORITHM
+from core.config import get_settings
+from db.session import get_db
+from models.user import User
+from schemas.user import UserCreate, User as UserSchema
+from schemas.token import Token
+from crud.user import get_user_by_email, create_user
+from auth.jwt import (
+    verify_password,
+    create_access_token,
+    create_refresh_token,
+    get_current_user
+)
 from utils.logger import jwt_logger
-from datetime import timedelta
-from jose import jwt, JWTError
 
-router = APIRouter()
+router = APIRouter(prefix="/users", tags=["users"])
+settings = get_settings()
 
-@router.post("/register", response_model=UserRead)
+@router.post("/register", response_model=UserSchema)
 async def register_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
-    jwt_logger.info(f"Attempting to register user with email: {user.email}")
-    existing_user = await get_user_by_email(db, user.email)
-    if existing_user:
-        jwt_logger.warning(f"Registration failed: Email {user.email} already registered")
-        raise HTTPException(status_code=400, detail="Email already registered")
-    new_user = await create_user(db, user)
-    jwt_logger.info(f"Successfully registered user with email: {user.email}")
-    return new_user
+    db_user = await get_user_by_email(db, email=user.email)
+    if db_user:
+        jwt_logger.warning(f"Registration failed: Email already registered: {user.email}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered"
+        )
+    jwt_logger.info(f"Creating new user: {user.email}")
+    return await create_user(db=db, user=user)
 
 @router.post("/login", response_model=Token)
 async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db)
 ):
-    jwt_logger.info(f"Login attempt for user: {form_data.username}")
-    user = await authenticate_user(db, form_data.username, form_data.password)
-    if not user:
+    user = await get_user_by_email(db, email=form_data.username)
+    if not user or not verify_password(form_data.password, user.hashed_password):
         jwt_logger.warning(f"Login failed for user: {form_data.username}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -37,55 +45,28 @@ async def login_for_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    access_token = create_access_token(
-        data={"sub": str(user.id), "type": "access"}
-    )
-    refresh_token = create_access_token(
-        data={"sub": str(user.id), "type": "refresh"},
-        expires_delta=timedelta(days=7)
-    )
-    jwt_logger.info(f"Login successful for user: {form_data.username}")
+    jwt_logger.info(f"User logged in successfully: {user.email}")
+    access_token = create_access_token(data={"sub": user.email})
+    refresh_token = create_refresh_token(data={"sub": user.email})
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
         "token_type": "bearer"
     }
 
-@router.get("/me", response_model=UserRead)
-async def read_users_me(
-    current_user_id: str = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-    jwt_logger.info(f"Fetching user profile for user ID: {current_user_id}")
-    user = await get_user_by_id(db, current_user_id)
-    if not user:
-        jwt_logger.warning(f"User not found for ID: {current_user_id}")
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
+@router.get("/me", response_model=UserSchema)
+async def read_users_me(current_user: User = Depends(get_current_user)):
+    jwt_logger.info(f"User profile accessed: {current_user.email}")
+    return current_user
 
 @router.post("/refresh-token", response_model=Token)
-async def refresh_token(
-    token: str = Depends(oauth2_scheme)
-):
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        if payload.get("type") != "refresh":
-            raise HTTPException(status_code=401, detail="Not a refresh token")
-        user_id: str = payload.get("sub")
-        if user_id is None:
-            raise HTTPException(status_code=401, detail="Invalid token")
-
-        new_access_token = create_access_token(data={"sub": user_id, "type": "access"})
-        new_refresh_token = create_access_token(
-            data={"sub": user_id, "type": "refresh"},
-            expires_delta=timedelta(days=7)
-        )
-        return {
-            "access_token": new_access_token,
-            "refresh_token": new_refresh_token,
-            "token_type": "bearer"
-        }
-
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Token refresh failed")
+async def refresh_token(current_user: User = Depends(get_current_user)):
+    jwt_logger.info(f"Refreshing token for user: {current_user.email}")
+    access_token = create_access_token(data={"sub": current_user.email})
+    refresh_token = create_refresh_token(data={"sub": current_user.email})
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer"
+    }
     

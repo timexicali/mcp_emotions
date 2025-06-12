@@ -4,6 +4,7 @@ from pydantic import BaseModel, EmailStr, ConfigDict
 from typing import Optional
 from uuid import UUID
 from datetime import datetime
+from schemas.base import BaseSchema
 
 
 class UserBase(BaseModel):
@@ -15,16 +16,29 @@ class UserCreate(UserBase):
     password: str
 
 
+class UserUpdate(UserBase):
+    password: str | None = None
+
+
+class UserInDB(UserBase, BaseSchema):
+    pass
+
+
+class User(UserInDB):
+    id: UUID
+    created_at: datetime
+    is_active: bool
+    hashed_password: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class UserRead(UserBase):
     id: UUID
     created_at: datetime
     is_active: bool
 
-    class Config:
-        from_attributes = True
-        json_encoders = {
-            UUID: str
-        }
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TokenRead(BaseModel):
@@ -45,5 +59,5 @@ class UserLogin(BaseModel):
 
 class Token(BaseModel):
     access_token: str
-    refresh_token: str
+    refresh_token: Optional[str] = None
     token_type: str
