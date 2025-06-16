@@ -77,4 +77,13 @@ htmlcov/
 .env.local
 .env.development.local
 .env.test.local
-.env.production.local 
+.env.production.local
+*.pem
+*.pem.pub
+*.sh
+*.sh.b64
+
+
+# Environment variables
+.env
+.env.* 

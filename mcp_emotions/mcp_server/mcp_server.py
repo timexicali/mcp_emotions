@@ -1,5 +1,3 @@
-# mcp_server.py - Advanced MCP server using GoEmotions for multilabel emotion detection
-
 from fastapi import FastAPI, Depends, HTTPException
 from langdetect import detect
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,7 +13,6 @@ from auth.jwt import get_current_user
 import torch
 import uuid
 import json
-import logging
 from typing import Optional, List, Dict
 from pydantic import BaseModel
 from utils.preprocessing import preprocess_input
@@ -23,7 +20,6 @@ from utils.sarcasm import detect_sarcasm, load_sarcasm_model
 from services.recommender import generate_recommendation
 
 settings = get_settings()
-logger = logging.getLogger("uvicorn.error")
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -31,7 +27,6 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
 
-# CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -40,7 +35,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
 app.include_router(user.router, prefix=settings.API_V1_STR)
 
 MODEL_MAP = {
@@ -53,35 +47,22 @@ tokenizers = {}
 models = {}
 
 def load_model(lang: str = "en"):
-    """Load and initialize the emotion detection model for the specified language."""
-    if not lang:
-        logger.warning("No language specified, defaulting to English")
-        lang = "en"
-    
     lang = lang.lower()
     if lang not in MODEL_MAP:
-        logger.warning(f"Unsupported language '{lang}', defaulting to English")
         lang = "en"
 
     if lang not in models:
-        logger.info(f"Loading model for language: {lang}")
-        try:
-            tokenizers[lang] = AutoTokenizer.from_pretrained(MODEL_MAP[lang])
-            models[lang] = AutoModelForSequenceClassification.from_pretrained(MODEL_MAP[lang])
-            models[lang].eval()
-            if torch.cuda.is_available():
-                models[lang] = models[lang].cuda()
-            dummy_input = tokenizers[lang]("test", return_tensors="pt", truncation=True, max_length=512)
-            if torch.cuda.is_available():
-                dummy_input = {k: v.cuda() for k, v in dummy_input.items()}
-            with torch.no_grad():
-                models[lang](**dummy_input)
-        except Exception as e:
-            logger.error(f"Failed to load model for language {lang}: {str(e)}")
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to load emotion detection model for {lang}"
-            )
+        print(f"Loading model for language: {lang}")
+        tokenizers[lang] = AutoTokenizer.from_pretrained(MODEL_MAP[lang])
+        models[lang] = AutoModelForSequenceClassification.from_pretrained(MODEL_MAP[lang])
+        models[lang].eval()
+        if torch.cuda.is_available():
+            models[lang] = models[lang].cuda()
+        dummy_input = tokenizers[lang]("test", return_tensors="pt", truncation=True, max_length=512)
+        if torch.cuda.is_available():
+            dummy_input = {k: v.cuda() for k, v in dummy_input.items()}
+        with torch.no_grad():
+            models[lang](**dummy_input)
 
     return tokenizers[lang], models[lang]
 
@@ -96,7 +77,6 @@ class ToolInput(BaseModel):
     message: str
     context: Optional[str] = None
     session_id: Optional[str] = None
-    language: Optional[str] = None  # New field to override langdetect
 
 class ToolOutput(BaseModel):
     session_id: str
@@ -115,31 +95,20 @@ async def detect_emotion(
         try:
             cleaned_text = preprocess_input(input.message)
         except ValueError as e:
-            logger.error(f"Input preprocessing failed: {str(e)}")
             raise HTTPException(status_code=400, detail=str(e))
 
-        # Validate language input
-        if input.language and input.language.lower() not in MODEL_MAP:
-            logger.warning(f"Invalid language specified: {input.language}, using auto-detection")
-            input.language = None
-
         try:
-            language = input.language or detect(cleaned_text)
-            if language not in MODEL_MAP:
-                logger.warning(f"Detected unsupported language: {language}, defaulting to English")
-                language = "en"
-        except Exception as e:
-            logger.warning(f"Language detection failed: {str(e)}, defaulting to English")
+            language = detect(cleaned_text)
+        except Exception:
             language = "en"
 
         is_sarcastic = detect_sarcasm(cleaned_text, lang=language)
-        tokenizer, model = load_model(lang=language)
+
+        tokenizer, model = load_model(lang=language if language in ["en", "es"] else "en")
+
         session_id = input.session_id or str(uuid.uuid4())
 
         inputs = tokenizer(cleaned_text, return_tensors="pt", truncation=True, max_length=512)
-        if torch.cuda.is_available():
-            inputs = {k: v.cuda() for k, v in inputs.items()}
-
         with torch.no_grad():
             logits = model(**inputs).logits
             probs = torch.sigmoid(logits)[0]
@@ -161,10 +130,10 @@ async def detect_emotion(
             db.add(emotion_log)
             await db.commit()
         except Exception as e:
-            logger.error(f"Database error while saving emotion log: {str(e)}")
-            # Continue execution even if database operation fails
+            print(f"Database error: {e}")
+            pass
 
-        recommendation = generate_recommendation(detected_emotions, is_sarcastic, language)
+        recommendation = generate_recommendation(detected_emotions, is_sarcastic)
 
         return ToolOutput(
             session_id=session_id,
@@ -173,10 +142,36 @@ async def detect_emotion(
             sarcasm_detected=is_sarcastic,
             recommendation=recommendation
         )
-
     except Exception as e:
-        logger.error(f"Error in emotion detection: {str(e)}")
+        print(f"Error in emotion detection: {e}")
         raise HTTPException(status_code=500, detail="Error processing emotion detection request")
+
+@app.get("/tools/emotion-history/user")
+async def get_user_emotion_history(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(EmotionLog)
+        .where(EmotionLog.user_id == current_user.id)
+        .order_by(EmotionLog.created_at.desc())
+    )
+    logs = result.scalars().all()
+    user_history = []
+    for log in logs:
+        try:
+            emotions = json.loads(log.emotions)
+        except json.JSONDecodeError:
+            emotions = []
+        user_history.append({
+            "session_id": log.session_id,
+            "message": log.message,
+            "emotions": emotions,
+            "context": log.context,
+            "sarcasm_detected": log.sarcasm_detected,
+            "timestamp": log.created_at
+        })
+    return {"user_id": str(current_user.id), "history": user_history}
 
 @app.get("/tools/emotion-history/{session_id}")
 async def get_emotion_history(
@@ -184,28 +179,18 @@ async def get_emotion_history(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    if not session_id:
-        raise HTTPException(status_code=400, detail="Session ID is required")
-
     result = await db.execute(
         select(EmotionLog)
         .where(EmotionLog.session_id == session_id)
         .order_by(EmotionLog.created_at)
     )
     logs = result.scalars().all()
-
-    if not logs:
-        logger.warning(f"No emotion history found for session: {session_id}")
-        return {"session_id": session_id, "history": []}
-
     history = []
     for log in logs:
         try:
             emotions = json.loads(log.emotions)
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to decode emotions JSON for session {session_id}: {str(e)}")
+        except json.JSONDecodeError:
             emotions = []
-
         history.append({
             "message": log.message,
             "emotions": emotions,
@@ -213,11 +198,7 @@ async def get_emotion_history(
             "sarcasm_detected": log.sarcasm_detected,
             "timestamp": log.created_at
         })
-
-    return {
-        "session_id": session_id,
-        "history": history
-    }
+    return {"session_id": session_id, "history": history}
 
 @app.get("/")
 async def root():
@@ -226,27 +207,32 @@ async def root():
 @app.on_event("startup")
 async def startup():
     try:
-        logger.info("\n=== Starting Model Preloading ===")
-
-        logger.info("\nLoading emotion detection models...")
+        print("\n=== Starting Model Preloading ===")
+        print("\nLoading emotion detection models...")
         for lang in ["en", "es"]:
+            print(f"Loading {lang} emotion model...")
             try:
-                load_model(lang)
-                logger.info(f"✓ {lang} emotion model loaded and warmed up")
+                tokenizer, model = load_model(lang)
+                print(f"✓ {lang} emotion model loaded and warmed up")
             except Exception as e:
-                logger.error(f"❌ Error loading {lang} emotion model: {str(e)}")
+                print(f"❌ Error loading {lang} emotion model: {str(e)}")
                 raise
-
-        logger.info("\nLoading sarcasm detection models...")
+        print("\nLoading sarcasm detection models...")
         for lang in ["en", "es"]:
+            print(f"Loading {lang} sarcasm model...")
             try:
-                load_sarcasm_model(lang)
-                logger.info(f"✓ {lang} sarcasm model loaded and warmed up")
+                tokenizer, model = load_sarcasm_model(lang)
+                print(f"✓ {lang} sarcasm model loaded and warmed up")
             except Exception as e:
-                logger.error(f"❌ Error loading {lang} sarcasm model: {str(e)}")
+                print(f"❌ Error loading {lang} sarcasm model: {str(e)}")
                 raise
+        print("\n=== All Models Loaded Successfully! ===\n")
 
-        logger.info("\n=== All Models Loaded Successfully! ===\n")
+        # Create database tables
+        print("\n=== Creating Database Tables ===")
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        print("✓ Database tables created successfully\n")
     except Exception as e:
-        logger.critical(f"\n❌ Critical error during model preloading: {str(e)}")
-        raise
+        print(f"\n❌ Critical error during startup: {str(e)}")
+        raise e

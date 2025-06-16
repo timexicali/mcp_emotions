@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import axios from 'axios';
+import { Link } from 'react-router-dom';
 
 type EmotionType = 
   'admiration' | 'amusement' | 'anger' | 'annoyance' | 'approval' | 'caring' | 'confusion' | 
@@ -98,6 +99,7 @@ export default function EmotionDetector() {
               {result.session_id && (
                 <div className="mt-2 text-sm text-gray-500">
                   Session ID: <span className="font-mono">{result.session_id}</span>
+                  <Link to="/my-history" className="ml-4 text-indigo-600 hover:text-indigo-900">View my history</Link>
                 </div>
               )}
               <div className="mt-2 bg-gray-50 rounded-md p-4">

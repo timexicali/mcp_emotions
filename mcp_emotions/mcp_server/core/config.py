@@ -17,15 +17,11 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     
     # Database Settings
-    POSTGRES_SERVER: str = "localhost"
-    POSTGRES_USER: str = "mcpsuper"
-    POSTGRES_PASSWORD: str = "mysecurepass"
-    POSTGRES_DB: str = "mcpdb"
-    POSTGRES_PORT: str = "5432"
-    DATABASE_URL: str = f"postgresql+asyncpg://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_SERVER}:{POSTGRES_PORT}/{POSTGRES_DB}"
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql+asyncpg://postgres:postgres@db:5432/mcp_db")
     
     class Config:
         env_file = ".env"
+        extra = "ignore"  # This will ignore extra fields from the environment
 
 @lru_cache()
 def get_settings():

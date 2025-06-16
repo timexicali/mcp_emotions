@@ -3,6 +3,7 @@ import Register from './components/Register';
 import Login from './components/Login';
 import EmotionDetector from './components/EmotionDetector';
 import EmotionHistory from './components/EmotionHistory';
+import UserHistory from './components/UserHistory';
 
 function App() {
   return (
@@ -19,7 +20,10 @@ function App() {
                   Emotion Detector
                 </Link>
                 <Link to="/history" className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300">
-                  History
+                  Session History
+                </Link>
+                <Link to="/my-history" className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300">
+                  My History
                 </Link>
               </div>
             </div>
@@ -41,6 +45,7 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
           <Route path="/history" element={<EmotionHistory />} />
+          <Route path="/my-history" element={<UserHistory />} />
         </Routes>
       </main>
     </div>

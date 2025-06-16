@@ -12,7 +12,7 @@ export const apiClient = axios.create({
 // Add request interceptor for authentication
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('access_token');
+    const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -30,10 +30,17 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config;
 
     // If the error is 401 and we haven't tried to refresh the token yet
-    if (error.response.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
       try {
+        // For now, just redirect to login as refresh token functionality is not fully implemented
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+        return Promise.reject(error);
+
+        /* 
+        // Uncomment when refresh token functionality is implemented
         const refreshToken = localStorage.getItem('refresh_token');
         if (!refreshToken) {
           throw new Error('No refresh token available');
@@ -46,16 +53,16 @@ apiClient.interceptors.response.use(
         });
 
         const { access_token, refresh_token } = response.data;
-        localStorage.setItem('access_token', access_token);
+        localStorage.setItem('token', access_token);
         localStorage.setItem('refresh_token', refresh_token);
 
         // Retry the original request with the new token
         originalRequest.headers.Authorization = `Bearer ${access_token}`;
         return apiClient(originalRequest);
+        */
       } catch (refreshError) {
         // If refresh token fails, redirect to login
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('token');
         window.location.href = '/login';
         return Promise.reject(refreshError);
       }
