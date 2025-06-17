@@ -31,7 +31,9 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000", 
-        "https://mcp-emotions.vercel.app"
+        "https://mcp-emotions.vercel.app",
+        "https://emotionwise.ai",
+        "https://www.emotionwise.ai"
     ],
     allow_credentials=True,
     allow_methods=["*"],
