@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import axios from 'axios';
 import { Link } from 'react-router-dom';
+import { apiClient } from '../api/client';
 
 type EmotionType = 
   'admiration' | 'amusement' | 'anger' | 'annoyance' | 'approval' | 'caring' | 'confusion' | 
@@ -31,23 +31,7 @@ export default function EmotionDetector() {
     setResult(null);
 
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setError('Please login to use the emotion detector');
-        setLoading(false);
-        return;
-      }
-
-      const response = await axios.post(
-        'http://localhost:8000/tools/emotion-detector',
-        { message: text },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
-
+      const response = await apiClient.post('/tools/emotion-detector', { message: text });
       setResult(response.data);
     } catch (e: any) {
       if (e.response?.status === 401) {

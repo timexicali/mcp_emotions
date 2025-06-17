@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import axios from 'axios';
+import { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+import { apiClient } from '../api/client';
 
 interface EmotionLog {
   message: string;
@@ -10,38 +11,25 @@ interface EmotionLog {
 }
 
 export default function EmotionHistory() {
-  const [sessionId, setSessionId] = useState('');
-  const [logs, setLogs] = useState<EmotionLog[]>([]);
+  const { sessionId } = useParams();
+  const [history, setHistory] = useState<any>(null);
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
     const fetchHistory = async () => {
-    if (!sessionId) {
-      setError('Please enter a session ID');
-      return;
-    }
-    setLoading(true);
-    setError('');
-    setLogs([]);
       try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          setError('Please login first');
-        setLoading(false);
-          return;
-        }
-      const response = await axios.get(`http://localhost:8000/tools/emotion-history/${sessionId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
-      setLogs(response.data.history || []);
-      } catch (err: any) {
-        setError(err.response?.data?.detail || 'Failed to fetch history');
+        const response = await apiClient.get(`/tools/emotion-history/${sessionId}`);
+        setHistory(response.data);
+      } catch (e: any) {
+        setError(e.response?.data?.detail || 'Failed to load emotion history');
       } finally {
         setLoading(false);
       }
     };
+
+    fetchHistory();
+  }, [sessionId]);
 
   return (
     <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
@@ -71,7 +59,7 @@ export default function EmotionHistory() {
           <div className="text-sm text-red-700">{error}</div>
         </div>
       )}
-      {logs.length === 0 && !error ? (
+      {history && history.history.length === 0 && !error ? (
         <div className="text-center py-12">
           <p className="text-gray-500">No history found. Enter a session ID to view logs.</p>
         </div>
@@ -91,7 +79,7 @@ export default function EmotionHistory() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {logs.map((log, idx) => (
+                    {history.history.map((log: EmotionLog, idx: number) => (
                       <tr key={idx}>
                         <td className="px-6 py-4 whitespace-pre-line text-sm text-gray-900">{log.message}</td>
                         <td className="px-6 py-4 text-sm text-gray-900">{log.emotions && log.emotions.length > 0 ? log.emotions.join(', ') : '-'}</td>

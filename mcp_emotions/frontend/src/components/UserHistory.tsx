@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { apiClient } from '../api/client';
 
 interface EmotionLog {
   session_id: string;
@@ -14,42 +14,22 @@ interface EmotionLog {
 export default function UserHistory() {
   const [logs, setLogs] = useState<EmotionLog[]>([]);
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchUserHistory();
-  }, []);
-
-  const fetchUserHistory = async () => {
-    setLoading(true);
-    setError('');
-    
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setError('You must be logged in to view your history');
-        navigate('/login');
+    const fetchHistory = async () => {
+      try {
+        const response = await apiClient.get('/tools/emotion-history/user');
+        setLogs(response.data.history || []);
+      } catch (e: any) {
+        setError(e.response?.data?.detail || 'Failed to load user history');
+      } finally {
         setLoading(false);
-        return;
       }
+    };
 
-      const response = await axios.get('http://localhost:8000/tools/emotion-history/user', {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-      setLogs(response.data.history || []);
-    } catch (err: any) {
-      console.error("Error fetching history:", err);
-      setError(err.response?.data?.detail || 'Failed to fetch history. Please make sure you are logged in.');
-      if (err.response?.status === 401) {
-        navigate('/login');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+    fetchHistory();
+  }, []);
 
   // Group logs by session ID
   const groupedLogs: Record<string, EmotionLog[]> = {};
