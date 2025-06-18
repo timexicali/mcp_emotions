@@ -218,6 +218,13 @@ async def startup():
             print(f"Loading {lang} emotion model...")
             try:
                 tokenizer, model = load_model(lang)
+                # Warm up the model with a dummy text
+                dummy_text = "Hello"
+                inputs = tokenizer(dummy_text, return_tensors="pt", truncation=True, max_length=512)
+                if torch.cuda.is_available():
+                    inputs = {k: v.cuda() for k, v in inputs.items()}
+                with torch.no_grad():
+                    _ = model(**inputs)
                 print(f"✓ {lang} emotion model loaded and warmed up")
             except Exception as e:
                 print(f"❌ Error loading {lang} emotion model: {str(e)}")
@@ -227,6 +234,13 @@ async def startup():
             print(f"Loading {lang} sarcasm model...")
             try:
                 tokenizer, model = load_sarcasm_model(lang)
+                # Warm up the sarcasm model with a dummy text
+                dummy_text = "Hello"
+                inputs = tokenizer(dummy_text, return_tensors="pt", truncation=True, max_length=512)
+                if torch.cuda.is_available():
+                    inputs = {k: v.cuda() for k, v in inputs.items()}
+                with torch.no_grad():
+                    _ = model(**inputs)
                 print(f"✓ {lang} sarcasm model loaded and warmed up")
             except Exception as e:
                 print(f"❌ Error loading {lang} sarcasm model: {str(e)}")
