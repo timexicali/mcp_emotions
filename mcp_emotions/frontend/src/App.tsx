@@ -1,14 +1,36 @@
-import { Routes, Route, Link } from 'react-router-dom';
-import { useState } from 'react';
+import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import Register from './components/Register';
 import Login from './components/Login';
 import EmotionDetector from './components/EmotionDetector';
 import EmotionHistory from './components/EmotionHistory';
 import UserHistory from './components/UserHistory';
 import ProtectedRoute from './components/ProtectedRoute';
+import logo from './assets/emotionwise.png';
 
 function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Listen for changes to localStorage (login/logout in other tabs)
+    const handleStorage = () => {
+      setIsAuthenticated(!!localStorage.getItem('token'));
+    };
+    window.addEventListener('storage', handleStorage);
+    // Also update on route change (in case login/logout happens in this tab)
+    setIsAuthenticated(!!localStorage.getItem('token'));
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [location]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    setIsAuthenticated(false);
+    setIsMenuOpen(false);
+    navigate('/login');
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -17,29 +39,49 @@ function App() {
           <div className="flex justify-between h-16">
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
-                <h1 className="text-xl font-bold text-gray-900">MCP Emotions</h1>
+                <img src={logo} alt="emotionwise.ai logo" className="h-10 w-10 mr-3 rounded-full shadow" />
+                <div>
+                  <h1 className="text-2xl font-extrabold text-gray-900 leading-tight">emotionwise.ai</h1>
+                  <div className="text-xs text-gray-500 font-medium tracking-wide">Decoding Emotions. Empowering Insight.</div>
+                </div>
               </div>
               {/* Desktop Navigation */}
               <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
                 <Link to="/" className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300">
                   Emotion Detector
                 </Link>
-                <Link to="/history" className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300">
-                  Session History
-                </Link>
-                <Link to="/my-history" className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300">
-                  My History
-                </Link>
+                {isAuthenticated && (
+                  <>
+                    <Link to="/history" className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300">
+                      Session History
+                    </Link>
+                    <Link to="/my-history" className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300">
+                      My History
+                    </Link>
+                  </>
+                )}
               </div>
             </div>
             {/* Desktop Auth Links */}
-            <div className="hidden sm:ml-6 sm:flex sm:items-center">
-              <Link to="/login" className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300">
-                Login
-              </Link>
-              <Link to="/register" className="ml-4 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300">
-                Register
-              </Link>
+            <div className="hidden sm:ml-6 sm:flex sm:items-center space-x-4">
+              {!isAuthenticated && (
+                <>
+                  <Link to="/login" className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300">
+                    Login
+                  </Link>
+                  <Link to="/register" className="ml-4 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300">
+                    Register
+                  </Link>
+                </>
+              )}
+              {isAuthenticated && (
+                <button
+                  onClick={handleLogout}
+                  className="ml-4 px-3 py-1 rounded bg-red-500 text-white font-medium hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-400"
+                >
+                  Logout
+                </button>
+              )}
             </div>
             {/* Mobile menu button */}
             <div className="flex items-center sm:hidden">
@@ -83,34 +125,50 @@ function App() {
             >
               Emotion Detector
             </Link>
-            <Link
-              to="/history"
-              className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Session History
-            </Link>
-            <Link
-              to="/my-history"
-              className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              My History
-            </Link>
-            <Link
-              to="/login"
-              className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Login
-            </Link>
-            <Link
-              to="/register"
-              className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Register
-            </Link>
+            {isAuthenticated && (
+              <>
+                <Link
+                  to="/history"
+                  className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Session History
+                </Link>
+                <Link
+                  to="/my-history"
+                  className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  My History
+                </Link>
+              </>
+            )}
+            {!isAuthenticated && (
+              <>
+                <Link
+                  to="/login"
+                  className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Login
+                </Link>
+                <Link
+                  to="/register"
+                  className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Register
+                </Link>
+              </>
+            )}
+            {isAuthenticated && (
+              <button
+                onClick={handleLogout}
+                className="block w-full text-left pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-red-600 hover:bg-red-50 hover:border-red-300 hover:text-red-800"
+              >
+                Logout
+              </button>
+            )}
           </div>
         </div>
       </nav>

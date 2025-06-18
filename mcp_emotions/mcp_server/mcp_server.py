@@ -315,3 +315,54 @@ async def get_detailed_user_emotion_history(
             "confidence_scores": json.loads(log.confidence_scores) if log.confidence_scores else {}
         })
     return {"user_id": str(current_user.id), "history": user_history}
+
+@app.post("/tools/emotion-detector/public")
+@limiter.limit("5/hour")  # 5 tries per hour per IP
+async def detect_emotion_public(
+    request: Request,
+    input: ToolInput
+) -> ToolOutput:
+    try:
+        try:
+            cleaned_text = preprocess_input(input.message)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+        try:
+            language = detect(cleaned_text)
+        except Exception:
+            language = "en"
+
+        is_sarcastic = detect_sarcasm(cleaned_text, lang=language)
+
+        tokenizer, model = load_model(lang=language if language in ["en", "es"] else "en")
+
+        session_id = input.session_id or str(uuid.uuid4())
+
+        inputs = tokenizer(cleaned_text, return_tensors="pt", truncation=True, max_length=512)
+        with torch.no_grad():
+            logits = model(**inputs).logits
+            probs = torch.sigmoid(logits)[0]
+
+        threshold = 0.15
+        detected = [(emotion_labels[i], float(probs[i])) for i in range(len(probs)) if probs[i] > threshold]
+        detected_emotions = [label for label, _ in detected]
+        confidence_scores = {label: round(score, 3) for label, score in detected}
+
+        recommendation = generate_recommendation(detected_emotions, is_sarcastic)
+
+        return ToolOutput(
+            session_id=session_id,
+            detected_emotions=detected_emotions,
+            confidence_scores=confidence_scores,
+            sarcasm_detected=is_sarcastic,
+            recommendation=recommendation
+        )
+    except RateLimitExceeded:
+        raise HTTPException(
+            status_code=429,
+            detail="You have reached the free trial limit. Please register for unlimited access."
+        )
+    except Exception as e:
+        print(f"Error in public emotion detection: {e}")
+        raise HTTPException(status_code=500, detail="Error processing emotion detection request")

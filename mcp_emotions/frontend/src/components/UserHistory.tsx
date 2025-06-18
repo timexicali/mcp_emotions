@@ -27,86 +27,64 @@ export default function UserHistory() {
         setLoading(false);
       }
     };
-
     fetchHistory();
   }, []);
 
   // Group logs by session ID
-  const groupedLogs: Record<string, EmotionLog[]> = {};
-  logs.forEach(log => {
-    if (!groupedLogs[log.session_id]) {
-      groupedLogs[log.session_id] = [];
-    }
-    groupedLogs[log.session_id].push(log);
-  });
+  const grouped = logs.reduce((acc: Record<string, EmotionLog[]>, log) => {
+    acc[log.session_id] = acc[log.session_id] || [];
+    acc[log.session_id].push(log);
+    return acc;
+  }, {});
 
   return (
-    <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-      <div className="px-4 py-5 sm:px-6">
-        <h3 className="text-lg leading-6 font-medium text-gray-900">
-          Your Emotion Detection History
-        </h3>
-        <p className="mt-1 text-sm text-gray-500">
-          All your previous emotion detection sessions
-        </p>
-      </div>
-      
-      {loading && (
-        <div className="flex justify-center py-8">
-          <div className="text-gray-500">Loading your history...</div>
-        </div>
-      )}
-      
-      {error && (
-        <div className="mt-4 rounded-md bg-red-50 p-4">
-          <div className="text-sm text-red-700">{error}</div>
-        </div>
-      )}
-
-      {!loading && !error && Object.keys(groupedLogs).length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-gray-500">No history found. Try detecting emotions first!</p>
-        </div>
-      )}
-
-      {Object.entries(groupedLogs).map(([sessionId, sessionLogs]) => (
-        <div key={sessionId} className="mt-6 bg-white shadow overflow-hidden sm:rounded-lg">
-          <div className="px-4 py-5 sm:px-6 bg-gray-50">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">
-              Session ID: {sessionId}
-            </h3>
-            <p className="mt-1 max-w-2xl text-sm text-gray-500">
-              {new Date(sessionLogs[0]?.timestamp).toLocaleString()}
-            </p>
-          </div>
-          <div className="border-t border-gray-200">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Message</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Emotions</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Context</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sarcasm</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {sessionLogs.map((log, idx) => (
-                    <tr key={idx}>
-                      <td className="px-6 py-4 whitespace-pre-line text-sm text-gray-900">{log.message}</td>
-                      <td className="px-6 py-4 text-sm text-gray-900">{log.emotions && log.emotions.length > 0 ? log.emotions.join(', ') : '-'}</td>
-                      <td className="px-6 py-4 text-sm text-gray-900">{log.context}</td>
-                      <td className="px-6 py-4 text-sm text-gray-900">{log.sarcasm_detected ? 'Yes' : 'No'}</td>
-                      <td className="px-6 py-4 text-sm text-gray-900">{new Date(log.timestamp).toLocaleTimeString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+    <div className="max-w-3xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <div className="bg-white shadow-lg rounded-xl border border-gray-100">
+        <div className="px-6 py-6 sm:p-8">
+          <h3 className="text-2xl font-bold text-gray-900 mb-2">My History</h3>
+          <div className="mb-4 text-gray-500">All your emotion detection sessions, grouped by session.</div>
+          {loading ? (
+            <div className="text-gray-500">Loading...</div>
+          ) : error ? (
+            <div className="rounded-md bg-red-50 p-4 text-red-700">{error}</div>
+          ) : logs.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">No history found.</div>
+          ) : (
+            <div className="space-y-8">
+              {Object.entries(grouped).map(([sessionId, sessionLogs]) => (
+                <div key={sessionId} className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="font-semibold text-indigo-700">Session ID: <span className="font-mono text-xs text-gray-700">{sessionId}</span></span>
+                    <Link to={`/history/${sessionId}`} className="text-indigo-600 hover:text-indigo-900 text-sm font-medium">View Session</Link>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Message</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Emotions</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sarcasm</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {sessionLogs.map((log, idx) => (
+                          <tr key={idx}>
+                            <td className="px-4 py-2 whitespace-pre-line text-sm text-gray-900">{log.message}</td>
+                            <td className="px-4 py-2 text-sm text-gray-900">{log.emotions && log.emotions.length > 0 ? log.emotions.join(', ') : <span className="text-gray-400">None</span>}</td>
+                            <td className="px-4 py-2 text-sm text-gray-900">{log.sarcasm_detected ? <span className="text-yellow-600">Yes</span> : <span className="text-gray-400">No</span>}</td>
+                            <td className="px-4 py-2 text-xs text-gray-500">{new Date(log.timestamp).toLocaleString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
+          )}
         </div>
-      ))}
+      </div>
     </div>
   );
 } 
