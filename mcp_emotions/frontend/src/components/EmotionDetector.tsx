@@ -56,12 +56,20 @@ export default function EmotionDetector() {
               className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
               placeholder="Enter your text here..."
               value={text}
+              maxLength={300}
               onChange={(e) => setText(e.target.value)}
             />
+            <div className="flex items-center justify-between text-xs text-gray-500">
+              <span>1-300 characters</span>
+              <span className={text.length > 300 ? 'text-red-500 font-semibold' : ''}>{text.length}/300</span>
+            </div>
+            {text.length > 300 && (
+              <div className="text-red-600 text-xs mt-1">Message cannot exceed 300 characters.</div>
+            )}
             <button
               type="submit"
-              disabled={loading}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              disabled={loading || text.length === 0 || text.length > 300}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
             >
               {loading ? 'Detecting...' : 'Detect Emotions'}
             </button>
@@ -136,10 +144,19 @@ export default function EmotionDetector() {
                     )}
                   </tbody>
                 </table>
-                <div className="mt-4">
-                  <span className="font-medium">Sarcasm:</span> {result.sarcasm_detected ? 
-                    <span className="ml-2 inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-300 shadow-sm">🔍</span> : 
-                    <span className="ml-2 inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-300 shadow-sm">👌</span>}
+                <div className="mt-4 flex items-center">
+                  <span className="font-medium mr-2">Sarcasm:</span>
+                  {result.sarcasm_detected ? (
+                    <span className="flex items-center space-x-1 text-green-700 bg-green-100 rounded-full px-2 py-0.5 font-semibold text-sm">
+                      <span className="text-base">✔️</span>
+                      <span>Detected</span>
+                    </span>
+                  ) : (
+                    <span className="flex items-center space-x-1 text-red-700 bg-red-100 rounded-full px-2 py-0.5 font-semibold text-sm">
+                      <span className="text-base">❌</span>
+                      <span>Not detected</span>
+                    </span>
+                  )}
                 </div>
                 {result.recommendation && (
                   <div className="mt-2 p-2 bg-blue-50 rounded">

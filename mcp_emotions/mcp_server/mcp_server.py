@@ -14,7 +14,7 @@ import torch
 import uuid
 import json
 from typing import Optional, List, Dict
-from pydantic import BaseModel
+from pydantic import BaseModel, constr
 from utils.preprocessing import preprocess_input
 from utils.sarcasm import detect_sarcasm, load_sarcasm_model
 from services.recommender import generate_recommendation
@@ -102,7 +102,7 @@ emotion_labels = [
 ]
 
 class ToolInput(BaseModel):
-    message: str
+    message: constr(min_length=1, max_length=300)
     context: Optional[str] = None
     session_id: Optional[str] = None
 
