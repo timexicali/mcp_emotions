@@ -4,7 +4,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.config import get_settings
 from db.session import get_db
-from models.user import User
+from models.user import User, UserToken
 from schemas.user import UserCreate, User as UserSchema
 from schemas.token import Token
 from crud.user import get_user_by_email, create_user
@@ -20,6 +20,10 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 from utils.rate_limit import should_rate_limit
 from pydantic import ValidationError
+from utils.email import send_welcome_email, send_email, send_verification_email
+import asyncio
+import uuid
+from sqlalchemy import select
 
 router = APIRouter(prefix="/users", tags=["users"])
 settings = get_settings()
@@ -58,7 +62,18 @@ async def register_user(
                 detail="Email already registered"
             )
         jwt_logger.info(f"Creating new user: {user.email}")
-        return await create_user(db=db, user=user)
+        new_user = await create_user(db=db, user=user, is_active=False)
+        # Generate email verification token
+        token = str(uuid.uuid4())
+        user_token = UserToken(user_id=new_user.id, token=token, is_active=True)
+        db.add(user_token)
+        await db.commit()
+        # Send verification email
+        try:
+            asyncio.create_task(send_verification_email(new_user.email, new_user.name, token))
+        except Exception as e:
+            jwt_logger.error(f"Failed to send verification email to {new_user.email}: {e}")
+        return new_user
     except ValidationError as e:
         jwt_logger.warning(f"Registration failed: Validation error for {user.email}: {str(e)}")
         raise HTTPException(
@@ -80,6 +95,12 @@ async def login_for_access_token(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
+        )
+    if not user.is_active:
+        jwt_logger.warning(f"Login attempt for inactive user: {user.email}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Please verify your email before logging in.",
         )
     
     jwt_logger.info(f"User logged in successfully: {user.email}")
@@ -114,4 +135,21 @@ async def refresh_token(
         "refresh_token": refresh_token,
         "token_type": "bearer"
     }
+
+@router.get("/verify-email")
+async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
+    # Find the token
+    result = await db.execute(select(UserToken).where(UserToken.token == token, UserToken.is_active == True))
+    user_token = result.scalar_one_or_none()
+    if not user_token:
+        return {"success": False, "message": "Invalid or expired token."}
+    # Activate user
+    result = await db.execute(select(User).where(User.id == user_token.user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        return {"success": False, "message": "User not found."}
+    user.is_active = True
+    user_token.is_active = False
+    await db.commit()
+    return {"success": True, "message": "Email verified. You can now log in."}
     

@@ -109,7 +109,7 @@ class ToolInput(BaseModel):
 class ToolOutput(BaseModel):
     session_id: str
     detected_emotions: List[str]
-    confidence_scores: Dict[str, float]
+    confidence_scores: Dict[str, int]
     sarcasm_detected: bool
     recommendation: Optional[str] = None
 
@@ -146,7 +146,7 @@ async def detect_emotion(
         threshold = 0.15
         detected = [(emotion_labels[i], float(probs[i])) for i in range(len(probs)) if probs[i] > threshold]
         detected_emotions = [label for label, _ in detected]
-        confidence_scores = {label: round(score, 3) for label, score in detected}
+        confidence_scores = {label: int(round(score * 100)) for label, score in detected}
 
         try:
             emotion_log = EmotionLog(
@@ -347,7 +347,7 @@ async def detect_emotion_public(
         threshold = 0.15
         detected = [(emotion_labels[i], float(probs[i])) for i in range(len(probs)) if probs[i] > threshold]
         detected_emotions = [label for label, _ in detected]
-        confidence_scores = {label: round(score, 3) for label, score in detected}
+        confidence_scores = {label: int(round(score * 100)) for label, score in detected}
 
         recommendation = generate_recommendation(detected_emotions, is_sarcastic)
 

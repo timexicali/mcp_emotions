@@ -7,6 +7,7 @@ import EmotionHistory from './components/EmotionHistory';
 import UserHistory from './components/UserHistory';
 import ProtectedRoute from './components/ProtectedRoute';
 import Privacy from './components/Privacy';
+import EmailVerified from './components/EmailVerified';
 import logo from './assets/emotionwise.png';
 
 function App() {
@@ -194,6 +195,7 @@ function App() {
             </ProtectedRoute>
           } />
           <Route path="/privacy" element={<Privacy />} />
+          <Route path="/verify-email" element={<EmailVerified />} />
         </Routes>
       </main>
       <footer className="w-full py-6 bg-white border-t border-gray-200 text-center text-sm text-gray-500">

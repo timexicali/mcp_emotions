@@ -22,12 +22,13 @@ async def authenticate_user(db: AsyncSession, email: str, password: str):
         return False
     return user
 
-async def create_user(db: AsyncSession, user: UserCreate) -> User:
+async def create_user(db: AsyncSession, user: UserCreate, is_active: bool = False) -> User:
     hashed_password = get_password_hash(user.password)
     db_user = User(
         email=user.email,
         name=user.name,
-        hashed_password=hashed_password
+        hashed_password=hashed_password,
+        is_active=is_active
     )
     db.add(db_user)
     await db.commit()

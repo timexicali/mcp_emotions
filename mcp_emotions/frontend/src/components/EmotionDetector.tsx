@@ -125,7 +125,7 @@ export default function EmotionDetector() {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {result.confidence_scores && result.confidence_scores[emotion] !== undefined ? 
                               <div className="flex items-center">
-                                <span className="mr-2">{result.confidence_scores[emotion]}</span>
+                                <span className="mr-2">{Math.round(result.confidence_scores[emotion] * 100)}%</span>
                                 <div className="w-24 bg-gray-200 rounded-full h-2.5">
                                   <div 
                                     className="bg-blue-600 h-2.5 rounded-full" 
