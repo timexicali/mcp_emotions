@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Request
 from langdetect import detect
 from fastapi.middleware.cors import CORSMiddleware
 from core.config import get_settings
@@ -18,8 +18,25 @@ from pydantic import BaseModel
 from utils.preprocessing import preprocess_input
 from utils.sarcasm import detect_sarcasm, load_sarcasm_model
 from services.recommender import generate_recommendation
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from utils.rate_limit import should_rate_limit
 
 settings = get_settings()
+
+# Initialize rate limiter
+limiter = Limiter(key_func=get_remote_address)
+
+def get_user_identifier(request: Request) -> str:
+    """Get user identifier for rate limiting."""
+    if not hasattr(request.state, 'user'):
+        return get_remote_address(request)
+    return str(request.state.user.id)
+
+def exempt_when(request: Request) -> bool:
+    """Check if request should be exempt from rate limiting."""
+    return not should_rate_limit(request)
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -27,10 +44,15 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
 
+# Add rate limiter to the app
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000", 
+        "http://localhost:3000",  # Local development
+        "http://frontend:3000",   # Docker frontend container
         "https://mcp-emotions.vercel.app",
         "https://emotionwise.ai",
         "https://www.emotionwise.ai"
@@ -38,6 +60,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
 
 app.include_router(user.router, prefix=settings.API_V1_STR)
@@ -91,7 +114,9 @@ class ToolOutput(BaseModel):
     recommendation: Optional[str] = None
 
 @app.post("/tools/emotion-detector")
+@limiter.limit("30/minute", key_func=get_user_identifier, exempt_when=lambda: exempt_when)
 async def detect_emotion(
+    request: Request,
     input: ToolInput,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
@@ -152,7 +177,9 @@ async def detect_emotion(
         raise HTTPException(status_code=500, detail="Error processing emotion detection request")
 
 @app.get("/tools/emotion-history/user")
+@limiter.limit("30/minute", key_func=get_user_identifier, exempt_when=lambda: exempt_when)
 async def get_user_emotion_history(
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
@@ -179,7 +206,9 @@ async def get_user_emotion_history(
     return {"user_id": str(current_user.id), "history": user_history}
 
 @app.get("/tools/emotion-history/{session_id}")
+@limiter.limit("30/minute", key_func=get_user_identifier, exempt_when=lambda: exempt_when)
 async def get_emotion_history(
+    request: Request,
     session_id: str,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
@@ -255,3 +284,34 @@ async def startup():
     except Exception as e:
         print(f"\n❌ Critical error during startup: {str(e)}")
         raise e
+
+# Example of a user-based rate limit
+@app.get("/tools/emotion-history/user/detailed")
+@limiter.limit("100/hour", key_func=get_user_identifier)  # Rate limit: 100 requests per hour per user
+async def get_detailed_user_emotion_history(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(EmotionLog)
+        .where(EmotionLog.user_id == current_user.id)
+        .order_by(EmotionLog.created_at.desc())
+    )
+    logs = result.scalars().all()
+    user_history = []
+    for log in logs:
+        try:
+            emotions = json.loads(log.emotions)
+        except json.JSONDecodeError:
+            emotions = []
+        user_history.append({
+            "session_id": log.session_id,
+            "message": log.message,
+            "emotions": emotions,
+            "context": log.context,
+            "sarcasm_detected": log.sarcasm_detected,
+            "timestamp": log.created_at,
+            "confidence_scores": json.loads(log.confidence_scores) if log.confidence_scores else {}
+        })
+    return {"user_id": str(current_user.id), "history": user_history}

@@ -1,5 +1,5 @@
 from datetime import timedelta
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.config import get_settings
@@ -15,12 +15,33 @@ from auth.jwt import (
     get_current_user
 )
 from utils.logger import jwt_logger
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from utils.rate_limit import should_rate_limit
 
 router = APIRouter(prefix="/users", tags=["users"])
 settings = get_settings()
 
+# Initialize rate limiter for public endpoints
+limiter = Limiter(key_func=get_remote_address)
+
+def exempt_when(request: Request) -> bool:
+    """Check if request should be exempt from rate limiting."""
+    return not should_rate_limit(request)
+
+def get_user_identifier(request: Request) -> str:
+    """Get user identifier for rate limiting."""
+    if not hasattr(request.state, 'user'):
+        return get_remote_address(request)
+    return str(request.state.user.id)
+
 @router.post("/register", response_model=UserSchema)
-async def register_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/minute", exempt_when=lambda: exempt_when)  # Rate limit: 5 requests per minute per IP
+async def register_user(
+    request: Request,
+    user: UserCreate,
+    db: AsyncSession = Depends(get_db)
+):
     db_user = await get_user_by_email(db, email=user.email)
     if db_user:
         jwt_logger.warning(f"Registration failed: Email already registered: {user.email}")
@@ -32,7 +53,9 @@ async def register_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
     return await create_user(db=db, user=user)
 
 @router.post("/login", response_model=Token)
+@limiter.limit("5/minute", exempt_when=lambda: exempt_when)  # Rate limit: 5 requests per minute per IP
 async def login_for_access_token(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db)
 ):
@@ -55,12 +78,20 @@ async def login_for_access_token(
     }
 
 @router.get("/me", response_model=UserSchema)
-async def read_users_me(current_user: User = Depends(get_current_user)):
+@limiter.limit("30/minute", key_func=get_user_identifier, exempt_when=lambda: exempt_when)  # Rate limit: 30 requests per minute per user
+async def read_users_me(
+    request: Request,
+    current_user: User = Depends(get_current_user)
+):
     jwt_logger.info(f"User profile accessed: {current_user.email}")
     return current_user
 
 @router.post("/refresh-token", response_model=Token)
-async def refresh_token(current_user: User = Depends(get_current_user)):
+@limiter.limit("30/minute", key_func=get_user_identifier, exempt_when=lambda: exempt_when)  # Rate limit: 30 requests per minute per user
+async def refresh_token(
+    request: Request,
+    current_user: User = Depends(get_current_user)
+):
     jwt_logger.info(f"Refreshing token for user: {current_user.email}")
     access_token = create_access_token(data={"sub": current_user.email})
     refresh_token = create_refresh_token(data={"sub": current_user.email})

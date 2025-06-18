@@ -18,3 +18,4 @@ alembic==1.12.1
 pysentimiento==0.7.3
 langdetect==1.0.9
 mangum==0.17.0
+slowapi==0.1.8
