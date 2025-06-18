@@ -15,9 +15,11 @@ from auth.jwt import (
     get_current_user
 )
 from utils.logger import jwt_logger
+from utils.password_validator import get_password_requirements
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from utils.rate_limit import should_rate_limit
+from pydantic import ValidationError
 
 router = APIRouter(prefix="/users", tags=["users"])
 settings = get_settings()
@@ -35,6 +37,11 @@ def get_user_identifier(request: Request) -> str:
         return get_remote_address(request)
     return str(request.state.user.id)
 
+@router.get("/password-requirements")
+async def get_password_requirements_endpoint():
+    """Get password requirements for the frontend."""
+    return {"requirements": get_password_requirements()}
+
 @router.post("/register", response_model=UserSchema)
 @limiter.limit("5/minute", exempt_when=lambda: exempt_when)  # Rate limit: 5 requests per minute per IP
 async def register_user(
@@ -42,15 +49,22 @@ async def register_user(
     user: UserCreate,
     db: AsyncSession = Depends(get_db)
 ):
-    db_user = await get_user_by_email(db, email=user.email)
-    if db_user:
-        jwt_logger.warning(f"Registration failed: Email already registered: {user.email}")
+    try:
+        db_user = await get_user_by_email(db, email=user.email)
+        if db_user:
+            jwt_logger.warning(f"Registration failed: Email already registered: {user.email}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered"
+            )
+        jwt_logger.info(f"Creating new user: {user.email}")
+        return await create_user(db=db, user=user)
+    except ValidationError as e:
+        jwt_logger.warning(f"Registration failed: Validation error for {user.email}: {str(e)}")
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e)
         )
-    jwt_logger.info(f"Creating new user: {user.email}")
-    return await create_user(db=db, user=user)
 
 @router.post("/login", response_model=Token)
 @limiter.limit("5/minute", exempt_when=lambda: exempt_when)  # Rate limit: 5 requests per minute per IP

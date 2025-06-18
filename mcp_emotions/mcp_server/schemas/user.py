@@ -1,10 +1,11 @@
 # schemas/user.py
 
-from pydantic import BaseModel, EmailStr, ConfigDict
+from pydantic import BaseModel, EmailStr, ConfigDict, field_validator
 from typing import Optional
 from uuid import UUID
 from datetime import datetime
 from schemas.base import BaseSchema
+from utils.password_validator import validate_password, get_password_requirements
 
 
 class UserBase(BaseModel):
@@ -14,10 +15,30 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
+    
+    @field_validator('password')
+    @classmethod
+    def validate_password_strength(cls, v: str) -> str:
+        is_valid, errors = validate_password(v)
+        if not is_valid:
+            error_message = "Password validation failed:\n" + "\n".join(f"• {error}" for error in errors)
+            raise ValueError(error_message)
+        return v
 
 
 class UserUpdate(UserBase):
     password: str | None = None
+    
+    @field_validator('password')
+    @classmethod
+    def validate_password_strength(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        is_valid, errors = validate_password(v)
+        if not is_valid:
+            error_message = "Password validation failed:\n" + "\n".join(f"• {error}" for error in errors)
+            raise ValueError(error_message)
+        return v
 
 
 class UserInDB(UserBase, BaseSchema):
