@@ -7,6 +7,7 @@ SMTP_PORT = int(os.getenv('SMTP_PORT', 587))
 SMTP_USER = os.getenv('SMTP_USER')
 SMTP_PASS = os.getenv('SMTP_PASS')
 FROM_EMAIL = os.getenv('FROM_EMAIL', SMTP_USER)
+FRONTEND_BASE_URL = os.getenv('FRONTEND_BASE_URL', 'https://emotionwise.ai')
 
 async def send_email(to_email: str, subject: str, body: str, html: str = None):
     message = EmailMessage()
@@ -43,7 +44,7 @@ The EmotionWise.ai Team
     await send_email(to_email, subject, body)
 
 async def send_verification_email(to_email: str, name: str, token: str):
-    verify_url = f"https://emotionwise.ai/verify-email?token={token}"
+    verify_url = f"{FRONTEND_BASE_URL}/verify-email?token={token}"
     subject = "Verify your email for EmotionWise.ai"
     body = f"""
 Hi {name},

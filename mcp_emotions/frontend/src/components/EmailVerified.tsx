@@ -14,7 +14,7 @@ export default function EmailVerified() {
       setMessage('No token provided.');
       return;
     }
-    apiClient.get(`/users/verify-email?token=${token}`)
+    apiClient.get(`/api/v1/users/verify-email?token=${token}`)
       .then(res => {
         if (res.data.success) {
           setStatus('success');
