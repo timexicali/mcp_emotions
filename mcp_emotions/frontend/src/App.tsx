@@ -6,6 +6,7 @@ import EmotionDetector from './components/EmotionDetector';
 import EmotionHistory from './components/EmotionHistory';
 import UserHistory from './components/UserHistory';
 import ProtectedRoute from './components/ProtectedRoute';
+import Privacy from './components/Privacy';
 import logo from './assets/emotionwise.png';
 
 function App() {
@@ -192,8 +193,13 @@ function App() {
               <UserHistory />
             </ProtectedRoute>
           } />
+          <Route path="/privacy" element={<Privacy />} />
         </Routes>
       </main>
+      <footer className="w-full py-6 bg-white border-t border-gray-200 text-center text-sm text-gray-500">
+        <span>&copy; {new Date().getFullYear()} emotionwise.ai &mdash; </span>
+        <Link to="/privacy" className="text-indigo-600 hover:underline">Privacy Policy</Link>
+      </footer>
     </div>
   );
 }
