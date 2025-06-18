@@ -26,6 +26,7 @@ class UserInDB(UserBase, BaseSchema):
 
 class User(UserInDB):
     id: UUID
+    role_id: int
     created_at: datetime
     is_active: bool
     hashed_password: str
@@ -35,6 +36,7 @@ class User(UserInDB):
 
 class UserRead(UserBase):
     id: UUID
+    role_id: int
     created_at: datetime
     is_active: bool
 

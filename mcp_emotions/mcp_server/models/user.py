@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Boolean, ForeignKey, TIMESTAMP, func
+from sqlalchemy import Column, String, Boolean, ForeignKey, TIMESTAMP, func, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
@@ -13,6 +13,7 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     name = Column(String, nullable=False)
     hashed_password = Column(String, nullable=False)
+    role_id = Column(Integer, nullable=False, server_default='1')
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     is_active = Column(Boolean, nullable=False, server_default='true')
