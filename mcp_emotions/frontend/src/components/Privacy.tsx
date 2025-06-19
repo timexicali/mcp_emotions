@@ -1,75 +1,213 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
 export default function Privacy() {
   return (
-    <div className="max-w-3xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
-      <div className="bg-white shadow-lg rounded-xl border border-gray-100 p-8">
-        <h1 className="text-3xl font-extrabold text-gray-900 mb-2">Privacy Policy for EmotionWise.ai</h1>
-        <div className="text-sm text-gray-500 mb-6">Effective Date: {today}</div>
-        <p className="mb-6 text-gray-700">EmotionWise.ai (“we”, “us”, or “our”) is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and protect your personal information when you use our web and mobile applications.</p>
-        <hr className="my-6" />
-        <h2 className="text-xl font-bold text-gray-800 mb-2">1. Information We Collect</h2>
-        <ul className="list-disc pl-6 mb-6 text-gray-700">
-          <li>Account Information: Your email address and hashed password.</li>
-          <li>Emotion Input Data: Text you enter into the platform for analysis.</li>
-          <li>Analysis Results: Detected emotions, sarcasm flags, and session metadata.</li>
-          <li>Device and Usage Info: IP address, browser type, operating system, timestamps.</li>
-        </ul>
-        <hr className="my-6" />
-        <h2 className="text-xl font-bold text-gray-800 mb-2">2. How We Use Your Information</h2>
-        <ul className="list-disc pl-6 mb-6 text-gray-700">
-          <li>Provide emotion detection and related services.</li>
-          <li>Improve system performance and model accuracy.</li>
-          <li>Communicate with you, including sending email verifications or alerts.</li>
-          <li>Ensure the security and integrity of the service.</li>
-        </ul>
-        <p className="mb-6 text-gray-700">We do not sell or rent your personal data.</p>
-        <hr className="my-6" />
-        <h2 className="text-xl font-bold text-gray-800 mb-2">3. Data Storage and Retention</h2>
-        <ul className="list-disc pl-6 mb-6 text-gray-700">
-          <li>Your data is securely stored on servers hosted by Amazon Web Services (AWS Lightsail) in the United States.</li>
-          <li>Passwords are stored using industry-standard hashing algorithms.</li>
-          <li>Session and emotion data may be retained for research or service improvement.</li>
-          <li>You may request deletion of your account and data by contacting us.</li>
-        </ul>
-        <hr className="my-6" />
-        <h2 className="text-xl font-bold text-gray-800 mb-2">4. Sharing of Data</h2>
-        <ul className="list-disc pl-6 mb-6 text-gray-700">
-          <li>With email service providers to send validation emails.</li>
-          <li>With law enforcement when required by applicable law.</li>
-          <li>Internally for technical support and system maintenance.</li>
-        </ul>
-        <hr className="my-6" />
-        <h2 className="text-xl font-bold text-gray-800 mb-2">5. Your Rights</h2>
-        <ul className="list-disc pl-6 mb-6 text-gray-700">
-          <li>Access your personal data.</li>
-          <li>Correct or update information.</li>
-          <li>Request deletion of your account and associated data.</li>
-          <li>Withdraw consent for optional data usage.</li>
-        </ul>
-        <hr className="my-6" />
-        <h2 className="text-xl font-bold text-gray-800 mb-2">6. Cookies and Tracking</h2>
-        <p className="mb-6 text-gray-700">We may use basic cookies or analytics tools to understand usage patterns and improve service. You can opt out of cookies through your browser settings.</p>
-        <hr className="my-6" />
-        <h2 className="text-xl font-bold text-gray-800 mb-2">7. Children's Privacy</h2>
-        <p className="mb-6 text-gray-700">EmotionWise.ai is not intended for children under 13 years of age. We do not knowingly collect data from children.</p>
-        <hr className="my-6" />
-        <h2 className="text-xl font-bold text-gray-800 mb-2">8. Security Practices</h2>
-        <p className="mb-6 text-gray-700">We use encryption, strict access controls, and monitoring to protect user data. However, no system is 100% secure. Users are encouraged to use strong passwords.</p>
-        <hr className="my-6" />
-        <h2 className="text-xl font-bold text-gray-800 mb-2">9. Changes to this Policy</h2>
-        <p className="mb-6 text-gray-700">We may update this Privacy Policy from time to time. We will notify users via the website or app when significant changes are made.</p>
-        <hr className="my-6" />
-        <h2 className="text-xl font-bold text-gray-800 mb-2">10. Contact Us</h2>
-        <p className="mb-2 text-gray-700">For any privacy-related concerns or requests, please contact:</p>
-        <ul className="list-disc pl-6 mb-6 text-gray-700">
-          <li>Email: <a href="mailto:support@emotionwise.ai" className="text-indigo-600 hover:underline">support@emotionwise.ai</a></li>
-          <li>Website: <a href="https://emotionwise.ai" className="text-indigo-600 hover:underline">https://emotionwise.ai</a></li>
-        </ul>
-        <hr className="my-6" />
-        <p className="text-gray-700">Thank you for trusting EmotionWise.ai to support your emotional insights journey.</p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <div className="max-w-4xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
+            Privacy Policy
+          </h1>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            How we protect and handle your data
+          </p>
+        </div>
+
+        {/* Content */}
+        <div className="bg-white/80 backdrop-blur-sm shadow-xl rounded-2xl border border-white/20 overflow-hidden">
+          <div className="p-6 sm:p-8 space-y-8">
+            {/* Introduction */}
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Introduction</h2>
+              <p className="text-gray-700 leading-relaxed">
+                At EmotionWise, we are committed to protecting your privacy and ensuring the security of your personal information. 
+                This Privacy Policy explains how we collect, use, and safeguard your data when you use our emotion detection service.
+              </p>
+            </section>
+
+            {/* Information We Collect */}
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Information We Collect</h2>
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-2">Personal Information</h3>
+                  <ul className="list-disc list-inside text-gray-700 space-y-1 ml-4">
+                    <li>Email address (for account creation and authentication)</li>
+                    <li>Password (encrypted and securely stored)</li>
+                    <li>Account preferences and settings</li>
+                  </ul>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-2">Usage Data</h3>
+                  <ul className="list-disc list-inside text-gray-700 space-y-1 ml-4">
+                    <li>Text content you submit for emotion analysis</li>
+                    <li>Emotion detection results and confidence scores</li>
+                    <li>Session information and timestamps</li>
+                    <li>Feedback and ratings you provide</li>
+                  </ul>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-2">Technical Information</h3>
+                  <ul className="list-disc list-inside text-gray-700 space-y-1 ml-4">
+                    <li>IP address and location data</li>
+                    <li>Browser type and version</li>
+                    <li>Device information and operating system</li>
+                    <li>Usage patterns and analytics data</li>
+                  </ul>
+                </div>
+              </div>
+            </section>
+
+            {/* How We Use Your Information */}
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">How We Use Your Information</h2>
+              <div className="space-y-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <h3 className="text-lg font-semibold text-blue-900 mb-2">Service Provision</h3>
+                  <p className="text-blue-800">
+                    To provide emotion detection services, process your requests, and deliver accurate results.
+                  </p>
+                </div>
+                <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                  <h3 className="text-lg font-semibold text-green-900 mb-2">Account Management</h3>
+                  <p className="text-green-800">
+                    To create and manage your account, authenticate your identity, and provide customer support.
+                  </p>
+                </div>
+                <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+                  <h3 className="text-lg font-semibold text-purple-900 mb-2">Service Improvement</h3>
+                  <p className="text-purple-800">
+                    To improve our AI models, enhance accuracy, and develop new features based on usage patterns.
+                  </p>
+                </div>
+                <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
+                  <h3 className="text-lg font-semibold text-orange-900 mb-2">Communication</h3>
+                  <p className="text-orange-800">
+                    To send important updates, security notifications, and respond to your inquiries.
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            {/* Data Security */}
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Data Security</h2>
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-6">
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-3">Encryption</h3>
+                    <p className="text-gray-700">
+                      All data is encrypted in transit using TLS/SSL protocols and at rest using industry-standard encryption.
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-3">Access Control</h3>
+                    <p className="text-gray-700">
+                      Strict access controls and authentication mechanisms protect your data from unauthorized access.
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-3">Regular Audits</h3>
+                    <p className="text-gray-700">
+                      We conduct regular security audits and assessments to maintain the highest security standards.
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-3">Data Minimization</h3>
+                    <p className="text-gray-700">
+                      We only collect and retain the minimum amount of data necessary to provide our services.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Data Sharing */}
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Data Sharing</h2>
+              <p className="text-gray-700 leading-relaxed mb-4">
+                We do not sell, trade, or rent your personal information to third parties. We may share data only in the following circumstances:
+              </p>
+              <ul className="list-disc list-inside text-gray-700 space-y-2 ml-4">
+                <li><strong>Service Providers:</strong> With trusted third-party services that help us operate our platform (hosting, analytics, etc.)</li>
+                <li><strong>Legal Requirements:</strong> When required by law or to protect our rights and safety</li>
+                <li><strong>Consent:</strong> With your explicit consent for specific purposes</li>
+                <li><strong>Business Transfers:</strong> In the event of a merger, acquisition, or sale of assets</li>
+              </ul>
+            </section>
+
+            {/* Your Rights */}
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Your Rights</h2>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
+                  <h3 className="text-lg font-semibold text-indigo-900 mb-2">Access & Portability</h3>
+                  <p className="text-indigo-800">
+                    You can access your data and request a copy of your information in a portable format.
+                  </p>
+                </div>
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                  <h3 className="text-lg font-semibold text-red-900 mb-2">Deletion</h3>
+                  <p className="text-red-800">
+                    You can request deletion of your account and associated data at any time.
+                  </p>
+                </div>
+                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                  <h3 className="text-lg font-semibold text-yellow-900 mb-2">Correction</h3>
+                  <p className="text-yellow-800">
+                    You can update or correct your personal information through your account settings.
+                  </p>
+                </div>
+                <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                  <h3 className="text-lg font-semibold text-green-900 mb-2">Opt-out</h3>
+                  <p className="text-green-800">
+                    You can opt out of non-essential communications and data processing activities.
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            {/* Contact Information */}
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Contact Us</h2>
+              <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-xl p-6">
+                <p className="text-gray-700 mb-4">
+                  If you have any questions about this Privacy Policy or our data practices, please contact us:
+                </p>
+                <div className="space-y-2 text-gray-700">
+                  <p><strong>Email:</strong> privacy@emotionwise.ai</p>
+                  <p><strong>Response Time:</strong> We aim to respond to all privacy inquiries within 48 hours.</p>
+                </div>
+              </div>
+            </section>
+
+            {/* Updates */}
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Updates to This Policy</h2>
+              <p className="text-gray-700 leading-relaxed">
+                We may update this Privacy Policy from time to time to reflect changes in our practices or applicable laws. 
+                We will notify you of any material changes by posting the updated policy on our website and updating the "Last Updated" date.
+              </p>
+            </section>
+
+            {/* Footer */}
+            <div className="border-t border-gray-200 pt-6 text-center">
+              <p className="text-sm text-gray-500 mb-4">
+                Last Updated: {new Date().toLocaleDateString()}
+              </p>
+              <Link
+                to="/"
+                className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-200"
+              >
+                ← Back to Home
+              </Link>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -69,7 +69,7 @@ app.include_router(emotion_vote.router, prefix=settings.API_V1_STR)
 
 MODEL_MAP = {
     "en": "bhadresh-savani/bert-base-go-emotion",
-    "es": "finiteautomata/bertweet-base-emotion-analysis"
+    "es": "finiteautomata/beto-emotion-analysis"
 }
 
 # Cached models and tokenizers
@@ -96,15 +96,24 @@ def load_model(lang: str = "en"):
 
     return tokenizers[lang], models[lang]
 
-emotion_labels = [
-    "admiration", "amusement", "anger", "annoyance", "approval", "caring", "confusion", "curiosity",
-    "desire", "disappointment", "disapproval", "disgust", "embarrassment", "excitement", "fear", "gratitude",
-    "grief", "joy", "love", "nervousness", "optimism", "pride", "realization", "relief", "remorse", "sadness",
-    "surprise", "neutral"
-]
+# Model-specific emotion labels
+emotion_labels_map = {
+    "en": [
+        "admiration", "amusement", "anger", "annoyance", "approval", "caring", "confusion", "curiosity",
+        "desire", "disappointment", "disapproval", "disgust", "embarrassment", "excitement", "fear", "gratitude",
+        "grief", "joy", "love", "nervousness", "optimism", "pride", "realization", "relief", "remorse", "sadness",
+        "surprise", "neutral"
+    ],
+    "es": [
+        "others", "joy", "sadness", "anger", "surprise", "disgust", "fear"
+    ]
+}
+
+# Default emotion labels for backward compatibility
+emotion_labels = emotion_labels_map["en"]
 
 class ToolInput(BaseModel):
-    message: constr(min_length=1, max_length=300)
+    message: constr(min_length=1, max_length=1000)
     context: Optional[str] = None
     session_id: Optional[str] = None
 
@@ -136,7 +145,10 @@ async def detect_emotion(
 
         is_sarcastic = detect_sarcasm(cleaned_text, lang=language)
 
-        tokenizer, model = load_model(lang=language if language in ["en", "es"] else "en")
+        # Determine model language and get appropriate labels
+        model_lang = language if language in ["en", "es"] else "en"
+        tokenizer, model = load_model(lang=model_lang)
+        model_emotion_labels = emotion_labels_map.get(model_lang, emotion_labels_map["en"])
 
         session_id = input.session_id or str(uuid.uuid4())
 
@@ -146,7 +158,9 @@ async def detect_emotion(
             probs = torch.sigmoid(logits)[0]
 
         threshold = 0.15
-        detected = [(emotion_labels[i], float(probs[i])) for i in range(len(probs)) if probs[i] > threshold]
+        # Ensure we don't go out of bounds
+        max_labels = min(len(probs), len(model_emotion_labels))
+        detected = [(model_emotion_labels[i], float(probs[i])) for i in range(max_labels) if probs[i] > threshold]
         detected_emotions = [label for label, _ in detected]
         confidence_scores = {label: int(round(score * 100)) for label, score in detected}
 
@@ -314,7 +328,7 @@ async def get_detailed_user_emotion_history(
             "context": log.context,
             "sarcasm_detected": log.sarcasm_detected,
             "timestamp": log.created_at,
-            "confidence_scores": json.loads(log.confidence_scores) if log.confidence_scores else {}
+            "confidence_scores": {}  # Confidence scores not stored in database
         })
     return {"user_id": str(current_user.id), "history": user_history}
 
@@ -337,7 +351,10 @@ async def detect_emotion_public(
 
         is_sarcastic = detect_sarcasm(cleaned_text, lang=language)
 
-        tokenizer, model = load_model(lang=language if language in ["en", "es"] else "en")
+        # Determine model language and get appropriate labels
+        model_lang = language if language in ["en", "es"] else "en"
+        tokenizer, model = load_model(lang=model_lang)
+        model_emotion_labels = emotion_labels_map.get(model_lang, emotion_labels_map["en"])
 
         session_id = input.session_id or str(uuid.uuid4())
 
@@ -347,7 +364,9 @@ async def detect_emotion_public(
             probs = torch.sigmoid(logits)[0]
 
         threshold = 0.15
-        detected = [(emotion_labels[i], float(probs[i])) for i in range(len(probs)) if probs[i] > threshold]
+        # Ensure we don't go out of bounds
+        max_labels = min(len(probs), len(model_emotion_labels))
+        detected = [(model_emotion_labels[i], float(probs[i])) for i in range(max_labels) if probs[i] > threshold]
         detected_emotions = [label for label, _ in detected]
         confidence_scores = {label: int(round(score * 100)) for label, score in detected}
 

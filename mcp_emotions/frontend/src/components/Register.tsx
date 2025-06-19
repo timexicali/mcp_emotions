@@ -1,13 +1,12 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/client';
 
 const passwordRules = [
-  { label: 'At least 8 characters', test: (pw: string) => pw.length >= 8 },
-  { label: 'At least 1 uppercase letter (A-Z)', test: (pw: string) => /[A-Z]/.test(pw) },
-  { label: 'At least 1 lowercase letter (a-z)', test: (pw: string) => /[a-z]/.test(pw) },
-  { label: 'At least 1 number (0-9)', test: (pw: string) => /\d/.test(pw) },
-  { label: 'At least 1 special character (!@#$%^&*()_+-=[]{}|;:,.<>?)', test: (pw: string) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pw) },
+  { test: (password: string) => password.length >= 8, text: 'At least 8 characters' },
+  { test: (password: string) => /[A-Z]/.test(password), text: 'One uppercase letter' },
+  { test: (password: string) => /[a-z]/.test(password), text: 'One lowercase letter' },
+  { test: (password: string) => /\d/.test(password), text: 'One number' },
 ];
 
 export default function Register() {
@@ -23,44 +22,38 @@ export default function Register() {
   const [touched, setTouched] = useState({ password: false, confirm: false });
   const navigate = useNavigate();
 
-  useEffect(() => {
-    // Fetch password requirements
-    const fetchRequirements = async () => {
-      try {
-        const response = await apiClient.get('/api/v1/users/password-requirements');
-        setPasswordRequirements(response.data.requirements);
-      } catch (e) {
-        // fallback to hardcoded
-        setPasswordRequirements(
-          'Password must meet the following requirements:\n' +
-          '• At least 8 characters\n' +
-          '• At least 1 uppercase letter (A-Z)\n' +
-          '• At least 1 lowercase letter (a-z)\n' +
-          '• At least 1 number (0-9)\n' +
-          '• At least 1 special character (!@#$%^&*()_+-=[]{}|;:,.<>?)'
-        );
-      }
-    };
-    fetchRequirements();
-  }, []);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     setError('');
+
     if (password !== confirmPassword) {
-      setError('Passwords do not match.');
+      setError('Passwords do not match');
+      setLoading(false);
       return;
     }
-    setLoading(true);
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters long');
+      setLoading(false);
+      return;
+    }
+
     try {
       await apiClient.post('/api/v1/users/register', {
         name,
         email,
         password,
       });
-      navigate('/login');
-    } catch (e: any) {
-      setError(e.response?.data?.detail || 'An error occurred during registration');
+      navigate('/login', { state: { message: 'Registration successful! Please check your email to verify your account.' } });
+    } catch (err: any) {
+      if (err.response?.status === 400) {
+        setError('An account with this email already exists');
+      } else if (err.response?.status === 422) {
+        setError('Please check your input and try again');
+      } else {
+        setError('An error occurred during registration. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -71,130 +64,174 @@ export default function Register() {
   const passwordsMatch = password === confirmPassword && password.length > 0;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg border border-gray-100">
-        <div className="flex flex-col items-center">
-          <h2 className="text-3xl font-extrabold text-gray-900">Create your account</h2>
-          <p className="mt-2 text-sm text-gray-500">Sign up to get started</p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        {/* Header */}
+        <div className="text-center">
+          <div className="mx-auto h-16 w-16 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg mb-6">
+            <svg className="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+            </svg>
+          </div>
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">
+            Create your account
+          </h2>
+          <p className="text-gray-600">
+            Join us to start detecting emotions
+          </p>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit} autoComplete="off">
-          {error && (
-            <div className="rounded-md bg-red-50 p-4">
-              <div className="text-sm text-red-700 whitespace-pre-line">{error}</div>
-            </div>
-          )}
-          <div className="space-y-4">
+
+        {/* Registration Form */}
+        <div className="bg-white/80 backdrop-blur-sm shadow-xl rounded-2xl border border-white/20 p-8">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Name Field */}
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="name" className="block text-sm font-semibold text-gray-700 mb-2">
                 Full Name
               </label>
               <input
                 id="name"
                 name="name"
                 type="text"
+                autoComplete="name"
                 required
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                placeholder="Full Name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-400"
+                placeholder="Enter your full name"
               />
             </div>
+
+            {/* Email Field */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
                 Email address
               </label>
               <input
                 id="email"
                 name="email"
                 type="email"
+                autoComplete="email"
                 required
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                placeholder="Email address"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-400"
+                placeholder="Enter your email"
               />
             </div>
+
+            {/* Password Field */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-2">
                 Password
               </label>
               <input
                 id="password"
                 name="password"
                 type="password"
-                required
-                className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm ${touched.password && !allValid ? 'border-red-400' : 'border-gray-300'}`}
-                placeholder="Password"
-                value={password}
-                onFocus={() => { setShowRequirements(true); setPasswordFocused(true); setTouched(t => ({ ...t, password: true })); }}
-                onBlur={() => setPasswordFocused(false)}
-                onChange={(e) => setPassword(e.target.value)}
                 autoComplete="new-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-400"
+                placeholder="Create a password"
               />
+              
+              {/* Password Requirements */}
+              {password && (
+                <div className="mt-3 space-y-2">
+                  {passwordRules.map((rule, index) => (
+                    <div key={index} className="flex items-center text-sm">
+                      <div className={`mr-2 ${passwordChecks[index] ? 'text-green-500' : 'text-gray-400'}`}>
+                        {passwordChecks[index] ? '✓' : '○'}
+                      </div>
+                      <span className={passwordChecks[index] ? 'text-green-700' : 'text-gray-600'}>
+                        {rule.text}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
+
+            {/* Confirm Password Field */}
             <div>
-              <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="confirmPassword" className="block text-sm font-semibold text-gray-700 mb-2">
                 Confirm Password
               </label>
               <input
-                id="confirm-password"
-                name="confirm-password"
+                id="confirmPassword"
+                name="confirmPassword"
                 type="password"
-                required
-                className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm ${touched.confirm && !passwordsMatch ? 'border-red-400' : 'border-gray-300'}`}
-                placeholder="Confirm Password"
-                value={confirmPassword}
-                onFocus={() => setTouched(t => ({ ...t, confirm: true }))}
-                onChange={(e) => setConfirmPassword(e.target.value)}
                 autoComplete="new-password"
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-400"
+                placeholder="Confirm your password"
               />
-              {touched.confirm && confirmPassword.length > 0 && (
-                <div className={`mt-1 text-xs font-medium ${passwordsMatch ? 'text-green-600' : 'text-red-600'}`}>{passwordsMatch ? 'Passwords match' : 'Passwords do not match'}</div>
+              
+              {/* Password Match Indicator */}
+              {confirmPassword && (
+                <div className="mt-2 flex items-center text-sm">
+                  <div className={`mr-2 ${passwordsMatch ? 'text-green-500' : 'text-red-500'}`}>
+                    {passwordsMatch ? '✓' : '✗'}
+                  </div>
+                  <span className={passwordsMatch ? 'text-green-700' : 'text-red-600'}>
+                    {passwordsMatch ? 'Passwords match' : 'Passwords do not match'}
+                  </span>
+                </div>
               )}
             </div>
-          </div>
 
-          {/* Password requirements, shown only when password is focused or being typed */}
-          <div
-            className={`transition-all duration-300 ${showRequirements && (passwordFocused || password.length > 0) ? 'opacity-100 max-h-96 mt-4' : 'opacity-0 max-h-0 overflow-hidden'}`}
-            aria-live="polite"
-          >
-            <div className="rounded-md bg-blue-50 p-4">
-              <div className="flex items-start">
-                <div className="flex-shrink-0 pt-1">
-                  <svg className="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="ml-3 w-full">
-                  <h3 className="text-sm font-medium text-blue-800 mb-1">Password Requirements</h3>
-                  <ul className="text-sm text-blue-700 space-y-1">
-                    {passwordRules.map((rule, idx) => (
-                      <li key={idx} className="flex items-center">
-                        {rule.test(password) ? (
-                          <svg className="h-4 w-4 text-green-500 mr-1.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                        ) : (
-                          <svg className="h-4 w-4 text-gray-400 mr-1.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                        )}
-                        {rule.label}
-                      </li>
-                    ))}
-                  </ul>
+            {/* Error Message */}
+            {error && (
+              <div className="animate-in slide-in-from-top-2 duration-300">
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                  <div className="flex items-start">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm text-red-700">{error}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
+            )}
 
-          <div>
+            {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading || !allValid || !passwordsMatch}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+              disabled={loading || !allValid || !passwordsMatch || !name.trim() || !email.trim()}
+              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-105 active:scale-95"
             >
-              {loading ? 'Creating account...' : 'Register'}
+              {loading ? (
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                  Creating account...
+                </div>
+              ) : (
+                'Create account'
+              )}
             </button>
-          </div>
-        </form>
+
+            {/* Login Link */}
+            <div className="text-center">
+              <p className="text-sm text-gray-600">
+                Already have an account?{' '}
+                <Link
+                  to="/login"
+                  className="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors duration-200"
+                >
+                  Sign in
+                </Link>
+              </p>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );
