@@ -19,6 +19,8 @@ if config.config_file_name is not None:
 from db.session import Base
 from models.user import User, UserToken
 from models.emotion_log import EmotionLog
+from models.feedback import Feedback
+from models.emotion_vote import EmotionVote
 
 target_metadata = Base.metadata
 
@@ -41,6 +43,10 @@ def run_migrations_offline() -> None:
 
     """
     url = config.get_main_option("sqlalchemy.url")
+    # Convert async URL to sync URL for Alembic
+    if url.startswith('postgresql+asyncpg://'):
+        url = url.replace('postgresql+asyncpg://', 'postgresql://')
+    
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -59,6 +65,14 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
+    # Get the URL and convert async to sync for Alembic
+    url = config.get_main_option("sqlalchemy.url")
+    if url.startswith('postgresql+asyncpg://'):
+        url = url.replace('postgresql+asyncpg://', 'postgresql://')
+    
+    # Update the config with the sync URL
+    config.set_main_option("sqlalchemy.url", url)
+    
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",

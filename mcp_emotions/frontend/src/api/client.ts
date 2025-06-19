@@ -70,4 +70,16 @@ apiClient.interceptors.response.use(
 
     return Promise.reject(error);
   }
-); 
+);
+
+export const submitFeedback = async (data: any, token?: string) => {
+  return apiClient.post('/api/v1/feedback/submit', data, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+};
+
+export const submitEmotionVote = async (data: any, token?: string) => {
+  return apiClient.post('/api/v1/feedback/emotion-vote', data, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+}; 

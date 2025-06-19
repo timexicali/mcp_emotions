@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, Request
 from langdetect import detect
 from fastapi.middleware.cors import CORSMiddleware
 from core.config import get_settings
-from routers import user
+from routers import user, feedback, emotion_vote
 from db.session import engine, Base, get_db
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -64,6 +64,8 @@ app.add_middleware(
 )
 
 app.include_router(user.router, prefix=settings.API_V1_STR)
+app.include_router(feedback.router, prefix=settings.API_V1_STR)
+app.include_router(emotion_vote.router, prefix=settings.API_V1_STR)
 
 MODEL_MAP = {
     "en": "bhadresh-savani/bert-base-go-emotion",

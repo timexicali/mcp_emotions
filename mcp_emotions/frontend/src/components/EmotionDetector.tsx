@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { apiClient } from '../api/client';
+import { apiClient, submitEmotionVote, submitFeedback } from '../api/client';
 
 type EmotionType = 
   'admiration' | 'amusement' | 'anger' | 'annoyance' | 'approval' | 'caring' | 'confusion' | 
@@ -23,16 +23,38 @@ export default function EmotionDetector() {
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [voted, setVoted] = useState<{ [emotion: string]: boolean | null }>({});
+  const [voteStatus, setVoteStatus] = useState<{ [emotion: string]: string }>({});
+  const [feedbackId, setFeedbackId] = useState<number | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     setResult(null);
+    setFeedbackId(null);
+    setVoted({});
+    setVoteStatus({});
 
     try {
       const response = await apiClient.post('/tools/emotion-detector', { message: text });
       setResult(response.data);
+      
+      // Create a feedback record for voting
+      if (response.data.detected_emotions && response.data.detected_emotions.length > 0) {
+        try {
+          const feedbackResponse = await submitFeedback({
+            text: text,
+            predicted_emotions: response.data.detected_emotions,
+            suggested_emotions: [],
+            comment: '',
+          });
+          setFeedbackId(feedbackResponse.data.id);
+        } catch (feedbackError) {
+          console.error('Failed to create feedback record:', feedbackError);
+          // Continue without feedback record - voting will be disabled
+        }
+      }
     } catch (e: any) {
       if (e.response?.status === 401) {
         setError('Your session has expired. Please login again.');
@@ -41,6 +63,30 @@ export default function EmotionDetector() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleVote = async (emotion: string, vote: boolean) => {
+    if (!result || !feedbackId) {
+      console.error('No feedback ID available for voting');
+      return;
+    }
+    
+    const token = localStorage.getItem('token');
+    setVoteStatus((prev) => ({ ...prev, [emotion]: 'loading' }));
+    try {
+      await submitEmotionVote({
+        feedback_id: feedbackId, // Now using the correct integer feedback_id
+        label: emotion,
+        score: result.confidence_scores[emotion] / 100,
+        vote,
+        comment: '',
+      }, token || undefined);
+      setVoted((prev) => ({ ...prev, [emotion]: vote }));
+      setVoteStatus((prev) => ({ ...prev, [emotion]: 'success' }));
+    } catch (err) {
+      console.error('Vote error:', err);
+      setVoteStatus((prev) => ({ ...prev, [emotion]: 'error' }));
     }
   };
 
@@ -106,6 +152,16 @@ export default function EmotionDetector() {
                   <Link to="/my-history" className="ml-4 text-indigo-600 hover:text-indigo-900">View my history</Link>
                 </div>
               )}
+              {feedbackId && (
+                <div className="mt-2 text-sm text-green-600">
+                  ✅ Feedback record created (ID: {feedbackId}) - Voting enabled
+                </div>
+              )}
+              {result.detected_emotions && result.detected_emotions.length > 0 && !feedbackId && (
+                <div className="mt-2 text-sm text-yellow-600">
+                  ⚠️ Creating feedback record for voting...
+                </div>
+              )}
               <div className="mt-2 bg-gray-50 rounded-md p-4">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead>
@@ -123,17 +179,40 @@ export default function EmotionDetector() {
                             {emotion}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {result.confidence_scores && result.confidence_scores[emotion] !== undefined ? 
-                              <div className="flex items-center">
-                                <span className="mr-2">{Math.round(result.confidence_scores[emotion] * 100)}%</span>
-                                <div className="w-24 bg-gray-200 rounded-full h-2.5">
-                                  <div 
-                                    className="bg-blue-600 h-2.5 rounded-full" 
-                                    style={{width: `${Math.round(result.confidence_scores[emotion] * 100)}%`}}
-                                  ></div>
-                                </div>
-                              </div> : '-'
-                            }
+                            <div className="flex items-center">
+                              <span className="mr-2">{result.confidence_scores[emotion]}%</span>
+                              <div className="w-24 bg-gray-200 rounded-full h-2.5">
+                                <div
+                                  className="bg-blue-600 h-2.5 rounded-full"
+                                  style={{ width: `${result.confidence_scores[emotion]}%` }}
+                                ></div>
+                              </div>
+                              {/* Feedback buttons */}
+                              <div className="ml-4 flex items-center space-x-2">
+                                {!feedbackId ? (
+                                  <span className="text-xs text-gray-500">Voting unavailable</span>
+                                ) : voted[emotion] === undefined ? (
+                                  <>
+                                    <button
+                                      className="text-green-600 hover:text-green-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                                      onClick={() => handleVote(emotion, true)}
+                                      aria-label="Like"
+                                      disabled={voteStatus[emotion] === 'loading'}
+                                    >👍</button>
+                                    <button
+                                      className="text-red-600 hover:text-red-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                                      onClick={() => handleVote(emotion, false)}
+                                      aria-label="Dislike"
+                                      disabled={voteStatus[emotion] === 'loading'}
+                                    >👎</button>
+                                  </>
+                                ) : voteStatus[emotion] === 'success' ? (
+                                  <span className="ml-2 text-green-600 font-semibold">Thank you!</span>
+                                ) : voteStatus[emotion] === 'error' ? (
+                                  <span className="ml-2 text-red-600 font-semibold">Error</span>
+                                ) : null}
+                              </div>
+                            </div>
                           </td>
                         </tr>
                       ))
