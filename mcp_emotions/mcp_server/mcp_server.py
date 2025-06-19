@@ -158,11 +158,22 @@ async def detect_emotion(
             probs = torch.sigmoid(logits)[0]
 
         threshold = 0.15
-        # Ensure we don't go out of bounds
-        max_labels = min(len(probs), len(model_emotion_labels))
-        detected = [(model_emotion_labels[i], float(probs[i])) for i in range(max_labels) if probs[i] > threshold]
-        detected_emotions = [label for label, _ in detected]
-        confidence_scores = {label: int(round(score * 100)) for label, score in detected}
+        # More robust bounds checking
+        if len(probs) == 0:
+            detected_emotions = []
+            confidence_scores = {}
+        else:
+            # Ensure we have the right number of labels for the model output
+            effective_labels = min(len(probs), len(model_emotion_labels))
+            
+            # Safe indexing with bounds checking
+            detected = []
+            for i in range(effective_labels):
+                if i < len(probs) and i < len(model_emotion_labels) and probs[i] > threshold:
+                    detected.append((model_emotion_labels[i], float(probs[i])))
+            
+            detected_emotions = [label for label, _ in detected]
+            confidence_scores = {label: int(round(score * 100)) for label, score in detected}
 
         try:
             emotion_log = EmotionLog(
@@ -364,11 +375,22 @@ async def detect_emotion_public(
             probs = torch.sigmoid(logits)[0]
 
         threshold = 0.15
-        # Ensure we don't go out of bounds
-        max_labels = min(len(probs), len(model_emotion_labels))
-        detected = [(model_emotion_labels[i], float(probs[i])) for i in range(max_labels) if probs[i] > threshold]
-        detected_emotions = [label for label, _ in detected]
-        confidence_scores = {label: int(round(score * 100)) for label, score in detected}
+        # More robust bounds checking
+        if len(probs) == 0:
+            detected_emotions = []
+            confidence_scores = {}
+        else:
+            # Ensure we have the right number of labels for the model output
+            effective_labels = min(len(probs), len(model_emotion_labels))
+            
+            # Safe indexing with bounds checking
+            detected = []
+            for i in range(effective_labels):
+                if i < len(probs) and i < len(model_emotion_labels) and probs[i] > threshold:
+                    detected.append((model_emotion_labels[i], float(probs[i])))
+            
+            detected_emotions = [label for label, _ in detected]
+            confidence_scores = {label: int(round(score * 100)) for label, score in detected}
 
         recommendation = generate_recommendation(detected_emotions, is_sarcastic)
 
