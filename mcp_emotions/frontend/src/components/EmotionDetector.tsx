@@ -26,6 +26,7 @@ export default function EmotionDetector() {
   const [voted, setVoted] = useState<{ [emotion: string]: boolean | null }>({});
   const [voteStatus, setVoteStatus] = useState<{ [emotion: string]: string }>({});
   const [feedbackId, setFeedbackId] = useState<number | null>(null);
+  const [detectedLanguage, setDetectedLanguage] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,6 +41,22 @@ export default function EmotionDetector() {
       const response = await apiClient.post('/tools/emotion-detector', { message: text });
       setResult(response.data);
       
+      // Simple language detection for frontend (backend will do proper detection)
+      let language = 'en'; // Default to English
+      try {
+        // Simple heuristic based on character patterns
+        const hasSpanishChars = /[ñáéíóúü]/i.test(text);
+        const hasSpanishWords = /\b(es|está|son|pero|con|una|por|para|desde|hasta|muy|más|también|año|años|día|días)\b/i.test(text);
+        const hasEnglishWords = /\b(the|and|is|to|a|in|that|have|for|not|with|you|this|but|his|from|they|are|was|were|will|would)\b/i.test(text);
+        
+        if (hasSpanishChars || (hasSpanishWords && !hasEnglishWords)) {
+          language = 'es';
+        }
+      } catch (e) {
+        language = 'en'; // Default to English if detection fails
+      }
+      setDetectedLanguage(language);
+      
       // Create a feedback record for voting
       if (response.data.detected_emotions && response.data.detected_emotions.length > 0) {
         try {
@@ -48,6 +65,7 @@ export default function EmotionDetector() {
             predicted_emotions: response.data.detected_emotions,
             suggested_emotions: [],
             comment: '',
+            language_code: language,
           });
           setFeedbackId(feedbackResponse.data.id);
         } catch (feedbackError) {
@@ -73,6 +91,7 @@ export default function EmotionDetector() {
     setFeedbackId(null);
     setVoted({});
     setVoteStatus({});
+    setDetectedLanguage(null);
   };
 
   const handleVote = async (emotion: string, vote: boolean) => {
@@ -206,6 +225,11 @@ export default function EmotionDetector() {
                     <div className="mb-4 p-3 bg-white/60 rounded-lg">
                       <div className="text-sm text-gray-600">
                         Session ID: <span className="font-mono text-gray-800">{result.session_id}</span>
+                        {detectedLanguage && (
+                          <span className="ml-3 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            Language: {detectedLanguage.toUpperCase()}
+                          </span>
+                        )}
                         <Link to="/my-history" className="ml-3 text-indigo-600 hover:text-indigo-800 underline">
                           View my history
                         </Link>

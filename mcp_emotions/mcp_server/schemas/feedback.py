@@ -8,6 +8,7 @@ class FeedbackBase(BaseModel):
     predicted_emotions: List[str]
     suggested_emotions: Optional[List[str]] = None
     comment: Optional[str] = Field(None, max_length=500)
+    language_code: Optional[str] = None  # For detecting language from text
 
     @validator('suggested_emotions', pre=True, always=True)
     def deduplicate_suggested(cls, v):
@@ -21,6 +22,7 @@ class FeedbackCreate(FeedbackBase):
 class FeedbackResponse(FeedbackBase):
     id: int
     user_id: str  # Will be converted from UUID to string
+    language_id: Optional[int] = None
     created_at: str  # Will be converted from datetime to string
     
     class Config:

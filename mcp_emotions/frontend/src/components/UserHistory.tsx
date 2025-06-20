@@ -16,6 +16,7 @@ export default function UserHistory() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+  const [expandedTexts, setExpandedTexts] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     fetchHistory();
@@ -65,7 +66,20 @@ export default function UserHistory() {
     setExpandedRows(newExpandedRows);
   };
 
+  const toggleExpandText = (logId: number) => {
+    const newExpandedTexts = new Set(expandedTexts);
+    if (newExpandedTexts.has(logId)) {
+      newExpandedTexts.delete(logId);
+    } else {
+      newExpandedTexts.add(logId);
+    }
+    setExpandedTexts(newExpandedTexts);
+  };
 
+  const truncateText = (text: string, maxLength: number = 100) => {
+    if (text.length <= maxLength) return text;
+    return text.slice(0, maxLength);
+  };
 
   if (loading) {
     return (
@@ -150,10 +164,43 @@ export default function UserHistory() {
                             {formatDate(log.created_at)}
                           </td>
                           <td className="px-4 sm:px-6 py-4">
-                            <div className="max-w-xs">
-                              <p className="text-sm text-gray-900 truncate" title={log.text}>
-                                {log.text}
-                              </p>
+                            <div className="max-w-sm">
+                              {expandedTexts.has(log.id) ? (
+                                <div>
+                                  <p className="text-sm text-gray-900 whitespace-pre-wrap break-words leading-relaxed">
+                                    {log.text}
+                                  </p>
+                                  {log.text.length > 100 && (
+                                    <button
+                                      onClick={() => toggleExpandText(log.id)}
+                                      className="mt-2 inline-flex items-center text-xs text-indigo-600 hover:text-indigo-800 hover:underline cursor-pointer transition-colors duration-200 font-medium"
+                                    >
+                                      <svg className="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                                      </svg>
+                                      Show less
+                                    </button>
+                                  )}
+                                </div>
+                              ) : (
+                                <div>
+                                  <p className="text-sm text-gray-900 line-clamp-3" title={log.text}>
+                                    {truncateText(log.text)}
+                                    {log.text.length > 100 && '...'}
+                                  </p>
+                                  {log.text.length > 100 && (
+                                    <button
+                                      onClick={() => toggleExpandText(log.id)}
+                                      className="mt-1 inline-flex items-center text-xs text-indigo-600 hover:text-indigo-800 hover:underline cursor-pointer transition-colors duration-200 font-medium"
+                                    >
+                                      <svg className="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                      </svg>
+                                      Show more
+                                    </button>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </td>
                           <td className="px-4 sm:px-6 py-4">

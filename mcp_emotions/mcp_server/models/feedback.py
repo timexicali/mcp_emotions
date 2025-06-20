@@ -1,4 +1,4 @@
-from sqlalchemy import Column, BigInteger, String, Boolean, Float, Text, ForeignKey, TIMESTAMP, func
+from sqlalchemy import Column, BigInteger, String, Boolean, Float, Text, ForeignKey, TIMESTAMP, func, Integer
 from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
 from db.base import Base
 
@@ -7,6 +7,7 @@ class Feedback(Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    language_id = Column(Integer, ForeignKey("languages.id"), nullable=True)
     text = Column(Text, nullable=False)
     predicted_emotions = Column(JSONB, nullable=False)
     suggested_emotions = Column(ARRAY(Text), nullable=True)

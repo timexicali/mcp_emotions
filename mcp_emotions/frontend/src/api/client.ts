@@ -78,6 +78,12 @@ export const submitFeedback = async (data: any, token?: string) => {
   });
 };
 
+export const getFeedbackList = async (token?: string) => {
+  return apiClient.get('/api/v1/feedback/list', {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+};
+
 export const submitEmotionVote = async (data: any, token?: string) => {
   return apiClient.post('/api/v1/feedback/emotion-vote', data, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},

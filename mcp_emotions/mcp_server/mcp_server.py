@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from models.user import User
 from models.emotion_log import EmotionLog
+from models.language import Language
 from auth.jwt import get_current_user
 import torch
 import uuid
@@ -76,6 +77,9 @@ MODEL_MAP = {
 tokenizers = {}
 models = {}
 
+# Global Spanish emotion analyzer (lazy loaded)
+emotion_analyzer_es = None
+
 def load_model(lang: str = "en"):
     lang = lang.lower()
     if lang not in MODEL_MAP:
@@ -112,6 +116,57 @@ emotion_labels_map = {
 # Default emotion labels for backward compatibility
 emotion_labels = emotion_labels_map["en"]
 
+def get_spanish_analyzer():
+    """Lazy load Spanish emotion analyzer with error handling."""
+    global emotion_analyzer_es
+    if emotion_analyzer_es is None:
+        try:
+            from pysentimiento import create_analyzer
+            emotion_analyzer_es = create_analyzer(task="emotion", lang="es")
+            print("✓ Spanish pysentimiento analyzer loaded successfully")
+        except Exception as e:
+            print(f"❌ Failed to load pysentimiento analyzer: {str(e)}")
+            print("🔄 Falling back to transformers for Spanish...")
+            emotion_analyzer_es = "fallback"  # Mark as fallback
+    return emotion_analyzer_es
+
+def detect_emotion_pysentimiento(text: str):
+    """Detect emotions using pysentimiento with fallback to transformers."""
+    analyzer = get_spanish_analyzer()
+    
+    if analyzer == "fallback":
+        # Use transformers fallback for Spanish
+        print("Using transformers fallback for Spanish emotion detection")
+        tokenizer, model = load_model(lang="es")
+        model_emotion_labels = emotion_labels_map["es"]
+
+        inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
+        with torch.no_grad():
+            logits = model(**inputs).logits
+            probs = torch.sigmoid(logits)[0]
+
+        threshold = 0.15
+        if len(probs) == 0:
+            detected_emotions = []
+            confidence_scores = {}
+        else:
+            effective_labels = min(len(probs), len(model_emotion_labels))
+            detected = []
+            for i in range(effective_labels):
+                if i < len(probs) and i < len(model_emotion_labels) and probs[i] > threshold:
+                    detected.append((model_emotion_labels[i], float(probs[i])))
+            
+            detected_emotions = [label for label, _ in detected]
+            confidence_scores = {label: int(round(score * 100)) for label, score in detected}
+        
+        return detected_emotions, confidence_scores
+    else:
+        # Use pysentimiento
+        result = analyzer.predict(text)
+        detected_emotions = [result.output]
+        confidence_scores = {k: int(round(v * 100)) for k, v in result.probas.items()}
+        return detected_emotions, confidence_scores
+
 class ToolInput(BaseModel):
     message: constr(min_length=1, max_length=1000)
     context: Optional[str] = None
@@ -147,33 +202,39 @@ async def detect_emotion(
 
         # Determine model language and get appropriate labels
         model_lang = language if language in ["en", "es"] else "en"
-        tokenizer, model = load_model(lang=model_lang)
-        model_emotion_labels = emotion_labels_map.get(model_lang, emotion_labels_map["en"])
 
         session_id = input.session_id or str(uuid.uuid4())
 
-        inputs = tokenizer(cleaned_text, return_tensors="pt", truncation=True, max_length=512)
-        with torch.no_grad():
-            logits = model(**inputs).logits
-            probs = torch.sigmoid(logits)[0]
-
-        threshold = 0.15
-        # More robust bounds checking
-        if len(probs) == 0:
-            detected_emotions = []
-            confidence_scores = {}
+        # Use pysentimiento for Spanish, transformers for English
+        if model_lang == "es":
+            detected_emotions, confidence_scores = detect_emotion_pysentimiento(cleaned_text)
         else:
-            # Ensure we have the right number of labels for the model output
-            effective_labels = min(len(probs), len(model_emotion_labels))
-            
-            # Safe indexing with bounds checking
-            detected = []
-            for i in range(effective_labels):
-                if i < len(probs) and i < len(model_emotion_labels) and probs[i] > threshold:
-                    detected.append((model_emotion_labels[i], float(probs[i])))
-            
-            detected_emotions = [label for label, _ in detected]
-            confidence_scores = {label: int(round(score * 100)) for label, score in detected}
+            # English detection using transformers
+            tokenizer, model = load_model(lang=model_lang)
+            model_emotion_labels = emotion_labels_map.get(model_lang, emotion_labels_map["en"])
+
+            inputs = tokenizer(cleaned_text, return_tensors="pt", truncation=True, max_length=512)
+            with torch.no_grad():
+                logits = model(**inputs).logits
+                probs = torch.sigmoid(logits)[0]
+
+            threshold = 0.15
+            # More robust bounds checking
+            if len(probs) == 0:
+                detected_emotions = []
+                confidence_scores = {}
+            else:
+                # Ensure we have the right number of labels for the model output
+                effective_labels = min(len(probs), len(model_emotion_labels))
+                
+                # Safe indexing with bounds checking
+                detected = []
+                for i in range(effective_labels):
+                    if i < len(probs) and i < len(model_emotion_labels) and probs[i] > threshold:
+                        detected.append((model_emotion_labels[i], float(probs[i])))
+                
+                detected_emotions = [label for label, _ in detected]
+                confidence_scores = {label: int(round(score * 100)) for label, score in detected}
 
         try:
             emotion_log = EmotionLog(
@@ -270,21 +331,45 @@ async def startup():
     try:
         print("\n=== Starting Model Preloading ===")
         print("\nLoading emotion detection models...")
-        for lang in ["en", "es"]:
-            print(f"Loading {lang} emotion model...")
-            try:
-                tokenizer, model = load_model(lang)
-                # Warm up the model with a dummy text
-                dummy_text = "Hello"
+        
+        # Load English transformers model
+        print("Loading en emotion model...")
+        try:
+            tokenizer, model = load_model("en")
+            # Warm up the model with a dummy text
+            dummy_text = "Hello"
+            inputs = tokenizer(dummy_text, return_tensors="pt", truncation=True, max_length=512)
+            if torch.cuda.is_available():
+                inputs = {k: v.cuda() for k, v in inputs.items()}
+            with torch.no_grad():
+                _ = model(**inputs)
+            print("✓ en emotion model loaded and warmed up")
+        except Exception as e:
+            print(f"❌ Error loading en emotion model: {str(e)}")
+            raise
+        
+        # Try to load Spanish model (pysentimiento with fallback)
+        print("Loading es emotion model...")
+        try:
+            analyzer = get_spanish_analyzer()
+            if analyzer != "fallback":
+                # Warm up pysentimiento model
+                _ = analyzer.predict("Hola")
+                print("✓ es emotion model (pysentimiento) loaded and warmed up")
+            else:
+                # Warm up Spanish transformers fallback
+                tokenizer, model = load_model("es")
+                dummy_text = "Hola"
                 inputs = tokenizer(dummy_text, return_tensors="pt", truncation=True, max_length=512)
                 if torch.cuda.is_available():
                     inputs = {k: v.cuda() for k, v in inputs.items()}
                 with torch.no_grad():
                     _ = model(**inputs)
-                print(f"✓ {lang} emotion model loaded and warmed up")
-            except Exception as e:
-                print(f"❌ Error loading {lang} emotion model: {str(e)}")
-                raise
+                print("✓ es emotion model (transformers fallback) loaded and warmed up")
+        except Exception as e:
+            print(f"❌ Error loading es emotion model: {str(e)}")
+            raise
+            
         print("\nLoading sarcasm detection models...")
         for lang in ["en", "es"]:
             print(f"Loading {lang} sarcasm model...")
@@ -364,33 +449,39 @@ async def detect_emotion_public(
 
         # Determine model language and get appropriate labels
         model_lang = language if language in ["en", "es"] else "en"
-        tokenizer, model = load_model(lang=model_lang)
-        model_emotion_labels = emotion_labels_map.get(model_lang, emotion_labels_map["en"])
 
         session_id = input.session_id or str(uuid.uuid4())
 
-        inputs = tokenizer(cleaned_text, return_tensors="pt", truncation=True, max_length=512)
-        with torch.no_grad():
-            logits = model(**inputs).logits
-            probs = torch.sigmoid(logits)[0]
-
-        threshold = 0.15
-        # More robust bounds checking
-        if len(probs) == 0:
-            detected_emotions = []
-            confidence_scores = {}
+        # Use pysentimiento for Spanish, transformers for English
+        if model_lang == "es":
+            detected_emotions, confidence_scores = detect_emotion_pysentimiento(cleaned_text)
         else:
-            # Ensure we have the right number of labels for the model output
-            effective_labels = min(len(probs), len(model_emotion_labels))
-            
-            # Safe indexing with bounds checking
-            detected = []
-            for i in range(effective_labels):
-                if i < len(probs) and i < len(model_emotion_labels) and probs[i] > threshold:
-                    detected.append((model_emotion_labels[i], float(probs[i])))
-            
-            detected_emotions = [label for label, _ in detected]
-            confidence_scores = {label: int(round(score * 100)) for label, score in detected}
+            # English detection using transformers
+            tokenizer, model = load_model(lang=model_lang)
+            model_emotion_labels = emotion_labels_map.get(model_lang, emotion_labels_map["en"])
+
+            inputs = tokenizer(cleaned_text, return_tensors="pt", truncation=True, max_length=512)
+            with torch.no_grad():
+                logits = model(**inputs).logits
+                probs = torch.sigmoid(logits)[0]
+
+            threshold = 0.15
+            # More robust bounds checking
+            if len(probs) == 0:
+                detected_emotions = []
+                confidence_scores = {}
+            else:
+                # Ensure we have the right number of labels for the model output
+                effective_labels = min(len(probs), len(model_emotion_labels))
+                
+                # Safe indexing with bounds checking
+                detected = []
+                for i in range(effective_labels):
+                    if i < len(probs) and i < len(model_emotion_labels) and probs[i] > threshold:
+                        detected.append((model_emotion_labels[i], float(probs[i])))
+                
+                detected_emotions = [label for label, _ in detected]
+                confidence_scores = {label: int(round(score * 100)) for label, score in detected}
 
         recommendation = generate_recommendation(detected_emotions, is_sarcastic)
 

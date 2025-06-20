@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { submitFeedback } from '../api/client';
+import { useState, useEffect } from 'react';
+import { submitFeedback, getFeedbackList } from '../api/client';
 
 interface FeedbackFormProps {
   text?: string;
   predicted_emotions?: string[];
+  language_code?: string;
   onSuccess?: () => void;
 }
 
@@ -14,13 +15,50 @@ const EMOTION_LIST = [
   'surprise', 'neutral'
 ];
 
-export default function FeedbackForm({ text = '', predicted_emotions = [], onSuccess }: FeedbackFormProps) {
+// Language mapping for display
+const LANGUAGE_NAMES: { [key: string]: string } = {
+  'en': 'English',
+  'es': 'Spanish',
+  'fr': 'French',
+  'de': 'German',
+  'it': 'Italian',
+  'pt': 'Portuguese',
+  'zh': 'Chinese',
+  'ja': 'Japanese',
+  'ko': 'Korean',
+  'ar': 'Arabic'
+};
+
+export default function FeedbackForm({ text = '', predicted_emotions = [], language_code, onSuccess }: FeedbackFormProps) {
   const [suggestedEmotions, setSuggestedEmotions] = useState<string[]>([]);
   const [suggestInput, setSuggestInput] = useState('');
   const [comment, setComment] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+  const [submittedFeedback, setSubmittedFeedback] = useState<any>(null);
+  const [feedbackHistory, setFeedbackHistory] = useState<any[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  useEffect(() => {
+    if (showHistory && feedbackHistory.length === 0) {
+      fetchFeedbackHistory();
+    }
+  }, [showHistory]);
+
+  const fetchFeedbackHistory = async () => {
+    setHistoryLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await getFeedbackList(token || undefined);
+      setFeedbackHistory(response.data);
+    } catch (err) {
+      console.error('Failed to fetch feedback history:', err);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
 
   const handleAddSuggestion = () => {
     const val = suggestInput.trim().toLowerCase();
@@ -39,17 +77,27 @@ export default function FeedbackForm({ text = '', predicted_emotions = [], onSuc
     setLoading(true);
     setError('');
     setSuccess('');
+    setSubmittedFeedback(null);
     try {
       const token = localStorage.getItem('token');
-      await submitFeedback({
+      const response = await submitFeedback({
         text,
         predicted_emotions,
         suggested_emotions: suggestedEmotions,
         comment,
+        language_code,
       }, token || undefined);
+      
+      setSubmittedFeedback(response.data);
       setSuccess('Thank you for your feedback!');
       setSuggestedEmotions([]);
       setComment('');
+      
+      // Refresh feedback history if it's currently showing
+      if (showHistory) {
+        fetchFeedbackHistory();
+      }
+      
       if (onSuccess) onSuccess();
     } catch (err: any) {
       if (err.response?.status === 401) {
@@ -87,6 +135,14 @@ export default function FeedbackForm({ text = '', predicted_emotions = [], onSuc
                   </label>
                   <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
                     <p className="text-gray-900">{text}</p>
+                    {/* Show detected language if available */}
+                    {language_code && (
+                      <div className="mt-2 text-sm text-gray-600">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          Language: {LANGUAGE_NAMES[language_code] || language_code.toUpperCase()}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -201,6 +257,18 @@ export default function FeedbackForm({ text = '', predicted_emotions = [], onSuc
                       </div>
                       <div className="ml-3">
                         <p className="text-sm text-green-700">{success}</p>
+                        {/* Show feedback details if available */}
+                        {submittedFeedback && (
+                          <div className="mt-2 text-xs text-green-600">
+                            <p>Feedback ID: {submittedFeedback.id}</p>
+                            {submittedFeedback.language_id && (
+                              <p>Language ID: {submittedFeedback.language_id}</p>
+                            )}
+                            {submittedFeedback.language_code && (
+                              <p>Detected Language: {LANGUAGE_NAMES[submittedFeedback.language_code] || submittedFeedback.language_code.toUpperCase()}</p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -225,6 +293,122 @@ export default function FeedbackForm({ text = '', predicted_emotions = [], onSuc
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+
+        {/* Feedback History Section */}
+        <div className="mt-8 bg-white/80 backdrop-blur-sm shadow-xl rounded-2xl border border-white/20 overflow-hidden">
+          <div className="p-6 sm:p-8">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-gray-900">Your Feedback History</h2>
+              <button
+                onClick={() => setShowHistory(!showHistory)}
+                className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-all duration-200 font-medium"
+              >
+                {showHistory ? 'Hide History' : 'Show History'}
+              </button>
+            </div>
+
+            {showHistory && (
+              <div>
+                {historyLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading feedback history...</p>
+                  </div>
+                ) : feedbackHistory.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-600">No feedback submitted yet.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            ID
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Text
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Language
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Predicted Emotions
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Suggested
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Date
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {feedbackHistory.map((feedback) => (
+                          <tr key={feedback.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {feedback.id}
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="max-w-xs">
+                                <p className="text-sm text-gray-900 truncate" title={feedback.text}>
+                                  {feedback.text.length > 50 ? `${feedback.text.slice(0, 50)}...` : feedback.text}
+                                </p>
+                              </div>
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap">
+                              {feedback.language_code ? (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                  {LANGUAGE_NAMES[feedback.language_code] || feedback.language_code.toUpperCase()}
+                                </span>
+                              ) : feedback.language_id ? (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                  ID: {feedback.language_id}
+                                </span>
+                              ) : (
+                                <span className="text-sm text-gray-500">-</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="flex flex-wrap gap-1">
+                                {feedback.predicted_emotions.slice(0, 2).map((emotion: string, index: number) => (
+                                  <span key={index} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    {emotion}
+                                  </span>
+                                ))}
+                                {feedback.predicted_emotions.length > 2 && (
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                    +{feedback.predicted_emotions.length - 2}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="flex flex-wrap gap-1">
+                                {feedback.suggested_emotions && feedback.suggested_emotions.length > 0 ? (
+                                  feedback.suggested_emotions.slice(0, 2).map((emotion: string, index: number) => (
+                                    <span key={index} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                      {emotion}
+                                    </span>
+                                  ))
+                                ) : (
+                                  <span className="text-sm text-gray-500">None</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {new Date(feedback.created_at).toLocaleDateString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
